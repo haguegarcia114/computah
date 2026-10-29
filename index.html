@@ -396,14 +396,12 @@
       logStatus("Canvas reset.");
     }
 
-    // --- Real-time Floyd-Steinberg Dithering ---
     function applyDitheringToCtx(targetCtx, x, y, width, height) {
       const imgData = targetCtx.getImageData(x, y, width, height);
       const data = imgData.data;
       const w = imgData.width;
       const h = imgData.height;
 
-      // Grayscale
       for (let i = 0; i < data.length; i += 4) {
         const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
         data[i] = gray;
@@ -411,7 +409,6 @@
         data[i + 2] = gray;
       }
 
-      // Error diffusion
       for (let currentY = 0; currentY < h; currentY++) {
         for (let currentX = 0; currentX < w; currentX++) {
           const idx = (currentY * w + currentX) * 4;
@@ -453,14 +450,12 @@
           if (i < currentSlot) {
             ctx.drawImage(capturedImages[i], 12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
           } else if (i === currentSlot && video.readyState === 4) {
-            // Live video stream
             ctx.save();
             ctx.translate(CANVAS_WIDTH - 12, 0);
             ctx.scale(-1, 1);
             ctx.drawImage(video, 0, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
             ctx.restore();
 
-            // Apply live dithered dots preview
             applyDitheringToCtx(ctx, 12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
           } else {
             ctx.fillStyle = '#F0F0F0';
@@ -530,19 +525,16 @@
       new QRCode(qrBox, { text: dummyURL, width: 80, height: 80 });
     }
 
-    // --- Low-Level Web Bluetooth Transmission Fix ---
+    // --- EXACT JOSH MCARTHUR YHK TRANSMISSION ENGINE ---
     async function connectAndPrint() {
       try {
         logStatus("Scanning for YHK Printer...");
 
+        const ISSC_SERVICE = '49535343-fe7d-4ae5-8fa9-9fafd205e455';
         const targetServices = [
-          '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+          ISSC_SERVICE,
           '0000e004-0000-1000-8000-00805f9b34fb',
-          '0000fef5-0000-1000-8000-00805f9b34fb',
-          '000018f0-0000-1000-8000-00805f9b34fb',
-          '0000ff00-0000-1000-8000-00805f9b34fb',
-          '0000ae01-0000-1000-8000-00805f9b34fb',
-          '0000af00-0000-1000-8000-00805f9b34fb'
+          '000018f0-0000-1000-8000-00805f9b34fb'
         ];
 
         const device = await navigator.bluetooth.requestDevice({
@@ -557,18 +549,17 @@
 
         logStatus("Connecting GATT server...");
         const server = await device.gatt.connect();
-        await new Promise(r => setTimeout(r, 400));
+        await new Promise(r => setTimeout(r, 500));
 
         let writeChar = null;
-
         for (const serviceUuid of targetServices) {
           try {
             const service = await server.getPrimaryService(serviceUuid);
-            const characteristics = await service.getCharacteristics();
-            for (const char of characteristics) {
-              if (char.properties.writeWithoutResponse || char.properties.write) {
-                writeChar = char;
-                logStatus("Service Connected: " + serviceUuid.substring(0, 8));
+            const chars = await service.getCharacteristics();
+            for (const c of chars) {
+              if (c.properties.writeWithoutResponse || c.properties.write) {
+                writeChar = c;
+                logStatus("Connected Service: " + serviceUuid.substring(0, 8));
                 break;
               }
             }
@@ -579,52 +570,57 @@
         }
 
         if (!writeChar) {
-          throw new Error("Connected, but writable channel was not found.");
+          throw new Error("No writable GATT channel found.");
         }
 
-        logStatus("Waking printer hardware...");
-        const initCmd = new Uint8Array([0x1B, 0x40, 0x1D, 0x49, 0xF0, 0xFF]);
-        await sendChunkForce(writeChar, initCmd);
+        logStatus("Sending init header...");
+        const initPayload = new Uint8Array([
+          0x1B, 0x40,             // ESC @ (Initialize)
+          0x1D, 0x49, 0xF0, 0xFF  // Set Heating Energy
+        ]);
+        await sendDataInChunks(writeChar, initPayload);
 
-        logStatus("Printing photo...");
-        const payload = buildYHKRasterPayload();
-        const CHUNK_SIZE = 20;
-
-        for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
-          const chunk = payload.slice(i, i + CHUNK_SIZE);
-          await sendChunkForce(writeChar, chunk);
-          await new Promise(r => setTimeout(r, 8));
-        }
+        logStatus("Printing photo strip...");
+        const rasterPayload = buildRasterPayload();
+        await sendDataInChunks(writeChar, rasterPayload);
 
         logStatus("Feeding paper...");
-        const feedCmd = new Uint8Array([0x1B, 0x64, 0x06, 0x0A, 0x0A]);
-        await sendChunkForce(writeChar, feedCmd);
+        const feedPayload = new Uint8Array([
+          0x1B, 0x64, 0x08,       // ESC d 8 (Feed 8 lines)
+          0x0A, 0x0A
+        ]);
+        await sendDataInChunks(writeChar, feedPayload);
 
         logStatus("Print Job Completed!");
+
       } catch (err) {
         logStatus("Print Error: " + err.message);
         console.error(err);
       }
     }
 
-    async function sendChunkForce(char, data) {
-      if (char.properties.writeWithoutResponse) {
-        await char.writeValueWithoutResponse(data);
-      } else {
-        await char.writeValue(data);
+    async function sendDataInChunks(characteristic, dataArray) {
+      const CHUNK_SIZE = 20; // 20-byte BLE boundary
+      for (let i = 0; i < dataArray.length; i += CHUNK_SIZE) {
+        const chunk = dataArray.slice(i, i + CHUNK_SIZE);
+        if (characteristic.properties.writeWithoutResponse) {
+          await characteristic.writeValueWithoutResponse(chunk);
+        } else {
+          await characteristic.writeValue(chunk);
+        }
+        await new Promise(r => setTimeout(r, 8)); // 8ms pacing
       }
     }
 
-    function buildYHKRasterPayload() {
+    function buildRasterPayload() {
       const width = canvas.width;  // 384 px
       const height = canvas.height; 
       const imgData = ctx.getImageData(0, 0, width, height).data;
-      const bytesPerLine = width / 8; // 48 bytes per line
+      const bytesPerLine = width / 8; // 48 bytes
 
-      const rasterBytes = [];
+      const payload = [];
 
-      // Single Block ESC/POS GS v 0 Command Header
-      rasterBytes.push(
+      payload.push(
         0x1D, 0x76, 0x30, 0x00,
         bytesPerLine & 0xFF, (bytesPerLine >> 8) & 0xFF,
         height & 0xFF, (height >> 8) & 0xFF
@@ -636,16 +632,15 @@
           for (let bit = 0; bit < 8; bit++) {
             const pixelIdx = ((y * width) + (x + bit)) * 4;
             const r = imgData[pixelIdx];
-            
             if (r < 128) {
               byteVal |= (0x80 >> bit);
             }
           }
-          rasterBytes.push(byteVal);
+          payload.push(byteVal);
         }
       }
 
-      return new Uint8Array(rasterBytes);
+      return new Uint8Array(payload);
     }
 
     function logStatus(msg) {
