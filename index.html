@@ -342,7 +342,7 @@
     </div>
   </div>
 
-  <script>
+<script>
     const canvas = document.getElementById('photoCanvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const video = document.getElementById('hiddenVideo');
@@ -525,14 +525,13 @@
       new QRCode(qrBox, { text: dummyURL, width: 80, height: 80 });
     }
 
-    // --- EXACT JOSH MCARTHUR YHK TRANSMISSION ENGINE ---
+    // --- REVISED YHK HARDWARE DRIVER ---
     async function connectAndPrint() {
       try {
         logStatus("Scanning for YHK Printer...");
 
-        const ISSC_SERVICE = '49535343-fe7d-4ae5-8fa9-9fafd205e455';
         const targetServices = [
-          ISSC_SERVICE,
+          '49535343-fe7d-4ae5-8fa9-9fafd205e455',
           '0000e004-0000-1000-8000-00805f9b34fb',
           '000018f0-0000-1000-8000-00805f9b34fb'
         ];
@@ -549,47 +548,46 @@
 
         logStatus("Connecting GATT server...");
         const server = await device.gatt.connect();
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 400));
 
+        // Find primary service and writable characteristic
         let writeChar = null;
-        for (const serviceUuid of targetServices) {
-          try {
-            const service = await server.getPrimaryService(serviceUuid);
-            const chars = await service.getCharacteristics();
-            for (const c of chars) {
-              if (c.properties.writeWithoutResponse || c.properties.write) {
-                writeChar = c;
-                logStatus("Connected Service: " + serviceUuid.substring(0, 8));
-                break;
-              }
+        const services = await server.getPrimaryServices();
+
+        for (const service of services) {
+          const chars = await service.getCharacteristics();
+          for (const c of chars) {
+            // Target the ISSC TX data characteristic or any writeWithoutResponse characteristic
+            if (c.properties.writeWithoutResponse || c.properties.write) {
+              writeChar = c;
+              break;
             }
-          } catch (e) {
-            continue;
           }
           if (writeChar) break;
         }
 
         if (!writeChar) {
-          throw new Error("No writable GATT channel found.");
+          throw new Error("No writable channel found. Power-cycle printer.");
         }
 
-        logStatus("Sending init header...");
-        const initPayload = new Uint8Array([
-          0x1B, 0x40,             // ESC @ (Initialize)
-          0x1D, 0x49, 0xF0, 0xFF  // Set Heating Energy
+        logStatus("Sending hardware wake sequence...");
+        // Command sequence: Initialize + Heating Density + Print Speed
+        const wakeCmd = new Uint8Array([
+          0x1B, 0x40,             // ESC @ Initialize
+          0x1D, 0x45, 0x0A,       // Heating energy
+          0x1D, 0x49, 0xF0, 0xFF, // Print density max
+          0x1B, 0x33, 0x00        // Set line spacing 0
         ]);
-        await sendDataInChunks(writeChar, initPayload);
+        await sendDataInChunks(writeChar, wakeCmd);
 
-        logStatus("Printing photo strip...");
-        const rasterPayload = buildRasterPayload();
+        logStatus("Printing thermal payload...");
+        const rasterPayload = buildYHKLineByLinePayload();
         await sendDataInChunks(writeChar, rasterPayload);
 
-        logStatus("Feeding paper...");
-        const feedPayload = new Uint8Array([
-          0x1B, 0x64, 0x08,       // ESC d 8 (Feed 8 lines)
-          0x0A, 0x0A
-        ]);
-        await sendDataInChunks(writeChar, feedPayload);
+        logStatus("Feeding paper motor...");
+        // ESC d 6 (Feed 6 lines) + Line Feeds
+        const feedCmd = new Uint8Array([0x1B, 0x64, 0x06, 0x0A, 0x0A, 0x0A]);
+        await sendDataInChunks(writeChar, feedCmd);
 
         logStatus("Print Job Completed!");
 
@@ -608,25 +606,22 @@
         } else {
           await characteristic.writeValue(chunk);
         }
-        await new Promise(r => setTimeout(r, 8)); // 8ms pacing
+        await new Promise(r => setTimeout(r, 10)); // Increased to 10ms pacing
       }
     }
 
-    function buildRasterPayload() {
+    // Line-by-line raster formatter guaranteed for YHK firmware
+    function buildYHKLineByLinePayload() {
       const width = canvas.width;  // 384 px
-      const height = canvas.height; 
+      const height = canvas.height;
       const imgData = ctx.getImageData(0, 0, width, height).data;
       const bytesPerLine = width / 8; // 48 bytes
-
-      const payload = [];
-
-      payload.push(
-        0x1D, 0x76, 0x30, 0x00,
-        bytesPerLine & 0xFF, (bytesPerLine >> 8) & 0xFF,
-        height & 0xFF, (height >> 8) & 0xFF
-      );
+      const result = [];
 
       for (let y = 0; y < height; y++) {
+        // Line Header: GS v 0 0 [48] [0] [1] [0]
+        result.push(0x1D, 0x76, 0x30, 0x00, 0x30, 0x00, 0x01, 0x00);
+
         for (let x = 0; x < width; x += 8) {
           let byteVal = 0;
           for (let bit = 0; bit < 8; bit++) {
@@ -636,11 +631,11 @@
               byteVal |= (0x80 >> bit);
             }
           }
-          payload.push(byteVal);
+          result.push(byteVal);
         }
       }
 
-      return new Uint8Array(payload);
+      return new Uint8Array(result);
     }
 
     function logStatus(msg) {
