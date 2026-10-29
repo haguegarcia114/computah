@@ -548,6 +548,27 @@
 
         logStatus("Connecting GATT server...");
         const server = await device.gatt.connect();
+        const services = await server.getPrimaryServices();
+
+        for (const service of services) {
+
+            console.log(
+                "SERVICE:",
+                service.uuid
+            );
+
+            const chars =
+                await service.getCharacteristics();
+
+            for (const c of chars) {
+
+                console.log(
+                    "CHAR:",
+                    c.uuid,
+                    c.properties
+                );
+            }
+        }
         await new Promise(r => setTimeout(r, 400));
 
         // Find primary service and writable characteristic
@@ -565,7 +586,20 @@
         const writeChar =
         await service.getCharacteristic(
             TX_UUID
+                );
+        console.log("TESTING PRINTER...");
+
+        await writeChar.writeValueWithoutResponse(
+            new Uint8Array([0x1B, 0x40])
         );
+
+        await new Promise(r => setTimeout(r, 500));
+
+        await writeChar.writeValueWithoutResponse(
+            new Uint8Array([0x0A])
+        );
+
+        logStatus("Sent test commands.");
 
         logStatus("Sending hardware wake sequence...");
         const wakeCmd = new Uint8Array([
