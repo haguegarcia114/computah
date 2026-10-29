@@ -525,119 +525,82 @@
       new QRCode(qrBox, { text: dummyURL, width: 80, height: 80 });
     }
 
-    // --- REVISED YHK HARDWARE DRIVER ---
     async function connectAndPrint() {
-      try {
+    try {
+
         logStatus("Scanning for YHK Printer...");
 
-        const targetServices = [
-          '49535343-fe7d-4ae5-8fa9-9fafd205e455',
-          '0000e004-0000-1000-8000-00805f9b34fb',
-          '000018f0-0000-1000-8000-00805f9b34fb'
-        ];
-
         const device = await navigator.bluetooth.requestDevice({
-          filters: [
-            { namePrefix: 'YHK' },
-            { namePrefix: 'Walk' },
-            { namePrefix: 'MX' },
-            { namePrefix: 'GB' }
-          ],
-          optionalServices: targetServices
+        filters: [
+            { namePrefix: "YHK" },
+            { namePrefix: "Walk" },
+            { namePrefix: "MX" },
+            { namePrefix: "GB" }
+        ],
+        optionalServices: [
+            "49535343-fe7d-4ae5-8fa9-9fafd205e455"
+        ]
         });
 
-        logStatus("Connecting GATT server...");
+        logStatus("Connecting...");
+
         const server = await device.gatt.connect();
 
-        for (const service of services) {
+        await new Promise(
+        r => setTimeout(r, 500)
+        );
+
+        const allServices =
+        await server.getPrimaryServices();
+
+        console.log("===== SERVICES =====");
+
+        for (const s of allServices) {
+
+        console.log(
+            "SERVICE:",
+            s.uuid
+        );
+
+        const chars =
+            await s.getCharacteristics();
+
+        for (const c of chars) {
 
             console.log(
-                "SERVICE:",
-                service.uuid
-            );
-
-            const chars =
-                await service.getCharacteristics();
-
-            for (const c of chars) {
-
-                console.log(
-                    "CHAR:",
-                    c.uuid,
-                    c.properties
-                );
+            "CHAR:",
+            c.uuid,
+            {
+                write: c.properties.write,
+                writeWithoutResponse:
+                c.properties.writeWithoutResponse,
+                notify:
+                c.properties.notify
             }
+            );
         }
-        await new Promise(r => setTimeout(r, 400));
+        }
 
-        // Find primary service and writable characteristic
-        const SERVICE_UUID =
-        '49535343-fe7d-4ae5-8fa9-9fafd205e455';
-
-        const TX_UUID =
-        '49535343-8841-43f4-a8d4-ecbe34729bb3';
-
-        const services = await server.getPrimaryServices();
-
-for (const service of services) {
-
-  console.log("SERVICE:", service.uuid);
-
-  const chars =
-    await service.getCharacteristics();
-
-  for (const c of chars) {
-
-    console.log(
-      "CHARACTERISTIC:",
-      c.uuid,
-      {
-        write: c.properties.write,
-        writeWithoutResponse:
-          c.properties.writeWithoutResponse,
-        notify: c.properties.notify
-      }
-    );
-  }
-}
-
-const service =
- await server.getPrimaryService(
-   SERVICE_UUID
- );
-
-const writeChar =
- await service.getCharacteristic(
-   TX_UUID
- );
-
-console.log("USING:", writeChar.uuid);
-
-        console.log("TESTING PRINTER...");
-
-        await writeChar.writeValueWithoutResponse(
-            new Uint8Array([0x1B, 0x40])
+        const service =
+        await server.getPrimaryService(
+            "49535343-fe7d-4ae5-8fa9-9fafd205e455"
         );
 
-        await new Promise(r => setTimeout(r, 500));
-
-        await writeChar.writeValueWithoutResponse(
-            new Uint8Array([0x0A])
+        const writeChar =
+        await service.getCharacteristic(
+            "49535343-8841-43f4-a8d4-ecbe34729bb3"
         );
 
-        logStatus("Sent test commands.");
+        console.log(
+        "USING:",
+        writeChar.uuid
+        );
 
-        logStatus("Sending hardware wake sequence...");
-        const wakeCmd = new Uint8Array([
-          0x1B,
-          0x40
-        ]);
-        await sendDataInChunks(writeChar, wakeCmd);
+        logStatus(
+        "Sending printer test..."
+        );
 
-        logStatus("Printing thermal payload...");
-
-        await sendDataInChunks(
-        writeChar,
+        await writeChar.writeValueWithoutResponse(
         new Uint8Array([
             0x1B,
             0x40
@@ -645,52 +608,33 @@ console.log("USING:", writeChar.uuid);
         );
 
         await new Promise(
-        r => setTimeout(r, 250)
+        r => setTimeout(r, 500)
         );
 
-        console.log(
-        "Canvas:",
-        canvas.width,
-        canvas.height
-        );
-
-        if (canvas.height > 900) {
-
-        logStatus(
-            "Warning: image very tall. YHK printers sometimes reject images >900px."
-        );
-
-        }
-        const rasterPayload = buildYHKLineByLinePayload();
-
-        console.log(
-        "Payload bytes:",
-        rasterPayload.length
+        await writeChar.writeValueWithoutResponse(
+        new Uint8Array([
+            0x0A,
+            0x0A,
+            0x0A
+        ])
         );
 
         logStatus(
-        `Sending ${rasterPayload.length} bytes...`
+        "Test commands sent."
         );
 
-        await sendDataInChunks(writeChar, rasterPayload);
+        return;
 
-        logStatus("Feeding paper motor...");
-        // ESC d 6 (Feed 6 lines) + Line Feeds
-        const feedCmd = new Uint8Array([
-        0x1B,
-        0x64,
-        0x08
-        ]);
-        await sendDataInChunks(writeChar, feedCmd);
+    } catch (err) {
 
-        logStatus("Print Job Completed!");
-
-      } catch (err) {
-        logStatus("Print Error: " + err.message);
         console.error(err);
-      }
-    }
 
+        logStatus(
+        "Print Error: " +
+        err.message
+        );
+    }
+    }
     async function sendDataInChunks(
     characteristic,
     dataArray
