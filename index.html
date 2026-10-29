@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>untitled - Paint</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --win-bg: #c0c0c0;
+      --win-border-light: #ffffff;
+      --win-border-dark: #808080;
+      --win-border-darker: #000000;
+      --navy: #000080;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "MS Sans Serif", "Courier New", monospace;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: #008080;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      padding: 6px;
+    }
+
+    /* Main Window Shell */
+    .window {
+      background: var(--win-bg);
+      border: 2px solid;
+      border-color: var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 2px;
+    }
+
+    /* Title Bar */
+    .title-bar {
+      background: var(--navy);
+      color: white;
+      padding: 2px 4px;
+      font-weight: bold;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .title-controls span {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      background: var(--win-bg);
+      color: black;
+      text-align: center;
+      line-height: 11px;
+      border: 1px solid;
+      border-color: var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
+      font-size: 10px;
+      margin-left: 2px;
+    }
+
+    /* Menu Bar */
+    .menu-bar {
+      display: flex;
+      gap: 12px;
+      padding: 2px 6px;
+      font-size: 12px;
+      border-bottom: 1px solid var(--win-border-dark);
+    }
+
+    /* Main Layout Area */
+    .main-body {
+      display: flex;
+      flex: 1;
+      margin-top: 2px;
+      gap: 4px;
+      overflow: hidden;
+    }
+
+    /* Classic 2-Column Square Icon Tool Sidebar */
+    .tools-sidebar {
+      width: 56px;
+      background: var(--win-bg);
+      display: grid;
+      grid-template-columns: repeat(2, 25px);
+      grid-auto-rows: 25px;
+      gap: 2px;
+      padding: 2px;
+      border: 1px solid var(--win-border-dark);
+    }
+
+    .tool-box {
+      background: var(--win-bg);
+      border: 1px solid;
+      border-color: var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 12px;
+      pointer-events: none; /* Decorative only */
+    }
+
+    /* Center Canvas Viewport */
+    .viewport {
+      flex: 1;
+      background: #808080;
+      border: 2px inset var(--win-border-light);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      overflow: auto;
+      padding: 10px;
+    }
+
+    canvas {
+      background: #ffffff;
+      border: 1px solid #000;
+      box-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+      width: 384px; /* 3-inch printing width standard */
+      height: auto;
+    }
+
+    /* Hidden Camera & QR Elements */
+    #hiddenVideo {
+      display: none;
+    }
+
+    #qrcode {
+      display: none;
+    }
+
+    /* Right Controls Panel */
+    .control-panel {
+      width: 200px;
+      background: var(--win-bg);
+      border: 1px solid var(--win-border-dark);
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .panel-section {
+      border: 2px inset var(--win-border-light);
+      padding: 6px;
+      background: #d4d4d4;
+    }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    button {
+      background: var(--win-bg);
+      border: 2px solid;
+      border-color: var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
+      padding: 6px;
+      font-weight: bold;
+      font-size: 11px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    button:active {
+      border-color: var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark);
+    }
+
+    .btn-snap {
+      background: #000080;
+      color: white;
+      height: 38px;
+    }
+
+    .btn-print {
+      background: #008000;
+      color: white;
+      height: 42px;
+      font-size: 13px;
+    }
+
+    .status-text {
+      font-size: 10px;
+      background: white;
+      border: 1px inset var(--win-border-dark);
+      padding: 4px;
+      height: 50px;
+      overflow-y: auto;
+    }
+
+    /* Bottom Color Palette Bar */
+    .color-bar {
+      height: 32px;
+      background: var(--win-bg);
+      border-top: 1px solid var(--win-border-dark);
+      display: flex;
+      align-items: center;
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .active-color-box {
+      width: 28px;
+      height: 24px;
+      border: 2px inset var(--win-border-light);
+      background: #000;
+    }
+
+    .swatches {
+      display: grid;
+      grid-template-rows: repeat(2, 11px);
+      grid-auto-flow: column;
+      gap: 1px;
+    }
+
+    .swatch {
+      width: 11px;
+      height: 11px;
+      border: 1px solid #808080;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="window">
+    <!-- Title Bar -->
+    <div class="title-bar">
+      <span>untitled - Paint</span>
+      <div class="title-controls">
+        <span>_</span>
+        <span>□</span>
+        <span>X</span>
+      </div>
+    </div>
+
+    <!-- Menu Bar -->
+    <div class="menu-bar">
+      <span>File</span>
+      <span>Edit</span>
+      <span>View</span>
+      <span>Image</span>
+      <span>Options</span>
+      <span>Help</span>
+    </div>
+
+    <!-- Main Body Area -->
+    <div class="main-body">
+      
+      <!-- Classic 2-Column Square Tools (Display Only) -->
+      <div class="tools-sidebar">
+        <div class="tool-box">✂️</div>
+        <div class="tool-box">✂️</div>
+        <div class="tool-box">🧹</div>
+        <div class="tool-box">🪣</div>
+        <div class="tool-box">👁️</div>
+        <div class="tool-box">🔍</div>
+        <div class="tool-box">✏️</div>
+        <div class="tool-box">🖌️</div>
+        <div class="tool-box">💨</div>
+        <div class="tool-box"><b>A</b></div>
+        <div class="tool-box">╲</div>
+        <div class="tool-box">∿</div>
+        <div class="tool-box">▭</div>
+        <div class="tool-box">⬡</div>
+        <div class="tool-box">◯</div>
+        <div class="tool-box">▢</div>
+      </div>
+
+      <!-- Main Interactive Canvas -->
+      <div class="viewport">
+        <canvas id="photoCanvas" width="384" height="600"></canvas>
+      </div>
+
+      <!-- Hidden Video Stream & QR Container -->
+      <video id="hiddenVideo" autoplay playsinline muted style="display:none;"></video>
+      <div id="qrcode"></div>
+
+      <!-- Right Photobooth Controls -->
+      <div class="control-panel">
+        <div class="panel-section">
+          <div class="panel-title">1. Photo Layout</div>
+          <select id="photoCountSelect" onchange="changeLayout()" style="width: 100%; padding: 4px; font-weight: bold;">
+            <option value="1">1 Photo Strip</option>
+            <option value="2">2 Photos Stacked</option>
+            <option value="3" selected>3 Photos Stacked</option>
+            <option value="4">4 Photos Stacked</option>
+          </select>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-title">2. Capture</div>
+          <button class="btn-snap" onclick="snapPhoto()">📸 SNAP NEXT</button>
+          <button style="margin-top: 4px;" onclick="resetPhotos()">🔄 Reset Canvas</button>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-title">3. Thermal Print</div>
+          <button class="btn-print" onclick="connectAndPrint()">🖨️ PRINT</button>
+        </div>
+
+        <div class="status-text" id="statusBox">Status: Select layout and snap photos.</div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Palette Bar (Decorative) -->
+    <div class="color-bar">
+      <div class="active-color-box"></div>
+      <div class="swatches">
+        <div class="swatch" style="background:#000000"></div>
+        <div class="swatch" style="background:#808080"></div>
+        <div class="swatch" style="background:#800000"></div>
+        <div class="swatch" style="background:#808000"></div>
+        <div class="swatch" style="background:#008000"></div>
+        <div class="swatch" style="background:#008080"></div>
+        <div class="swatch" style="background:#000080"></div>
+        <div class="swatch" style="background:#800080"></div>
+        <div class="swatch" style="background:#ffffff"></div>
+        <div class="swatch" style="background:#c0c0c0"></div>
+        <div class="swatch" style="background:#ff0000"></div>
+        <div class="swatch" style="background:#ffff00"></div>
+        <div class="swatch" style="background:#00ff00"></div>
+        <div class="swatch" style="background:#00ffff"></div>
+        <div class="swatch" style="background:#0000ff"></div>
+        <div class="swatch" style="background:#ff00ff"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Canvas & Camera Globals ---
+    const canvas = document.getElementById('photoCanvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const video = document.getElementById('hiddenVideo');
+    const statusBox = document.getElementById('statusBox');
+
+    let totalPhotos = 3;
+    let capturedImages = []; // Stores fixed images
+    let liveAnimationId = null;
+
+    // --- Footer Configurations ---
+    const FOOTER_HEIGHT = 100;
+    const CANVAS_WIDTH = 384; // Fixed 3-inch thermal printer width
+    const PHOTO_BOX_HEIGHT = 220; // Height per photo slot
+
+    // --- Initialize System ---
+    async function init() {
+      await setupWebcam();
+      changeLayout();
+    }
+
+    async function setupWebcam() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 960 }, facingMode: 'user' },
+          audio: false
+        });
+        video.srcObject = stream;
+        logStatus("Webcam ready.");
+      } catch (err) {
+        logStatus("Camera Error: " + err.message);
+      }
+    }
+
+    function changeLayout() {
+      totalPhotos = parseInt(document.getElementById('photoCountSelect').value);
+      capturedImages = [];
+      
+      // Calculate total height based on stacked photos + footer
+      canvas.height = (totalPhotos * PHOTO_BOX_HEIGHT) + FOOTER_HEIGHT;
+      
+      generateQRCode();
+      startLiveRenderLoop();
+      logStatus(`Layout set to ${totalPhotos} photos.`);
+    }
+
+    function resetPhotos() {
+      capturedImages = [];
+      startLiveRenderLoop();
+      logStatus("Canvas reset.");
+    }
+
+    // --- Live Render Loop ---
+    // Renders saved photos and overlays live video stream onto current slot
+    function startLiveRenderLoop() {
+      if (liveAnimationId) cancelAnimationFrame(liveAnimationId);
+
+      function render() {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const currentSlot = capturedImages.length;
+
+        for (let i = 0; i < totalPhotos; i++) {
+          const yPos = i * PHOTO_BOX_HEIGHT;
+
+          // Draw Photo Frame Border
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(10, yPos + 10, CANVAS_WIDTH - 20, PHOTO_BOX_HEIGHT - 20);
+
+          if (i < currentSlot) {
+            // Draw already snapped photo
+            ctx.drawImage(capturedImages[i], 12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
+          } else if (i === currentSlot && video.readyState === 4) {
+            // Draw live mirrored webcam video stream inside active slot
+            ctx.save();
+            ctx.translate(CANVAS_WIDTH - 12, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
+            ctx.restore();
+          } else {
+            // Blank slot background
+            ctx.fillStyle = '#F0F0F0';
+            ctx.fillRect(12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
+          }
+        }
+
+        renderFooter();
+        liveAnimationId = requestAnimationFrame(render);
+      }
+
+      render();
+    }
+
+    // Render "Ok Computah" branding and QR code
+    function renderFooter() {
+      const footerY = canvas.height - FOOTER_HEIGHT;
+
+      // Divider Line
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(10, footerY);
+      ctx.lineTo(CANVAS_WIDTH - 10, footerY);
+      ctx.stroke();
+
+      // Brand Text: "Ok Computah"
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 20px "Courier New"';
+      ctx.fillText('Ok Computah', 16, footerY + 38);
+
+      // Instagram Subtext
+      ctx.font = '12px "Courier New"';
+      ctx.fillText('@ok.computah', 16, footerY + 58);
+
+      // Draw QR Code
+      const qrImg = document.querySelector('#qrcode img');
+      if (qrImg && qrImg.src) {
+        ctx.drawImage(qrImg, CANVAS_WIDTH - 90, footerY + 10, 80, 80);
+      }
+    }
+
+    // --- Snap Photo Action ---
+    function snapPhoto() {
+      if (capturedImages.length >= totalPhotos) {
+        logStatus("All slots full! Press Print or Reset.");
+        return;
+      }
+
+      // Freeze current video frame to an offscreen image
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = CANVAS_WIDTH - 24;
+      tempCanvas.height = PHOTO_BOX_HEIGHT - 24;
+      const tempCtx = tempCanvas.getContext('2d');
+
+      // Mirror video
+      tempCtx.translate(tempCanvas.width, 0);
+      tempCtx.scale(-1, 1);
+      tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+
+      const img = new Image();
+      img.src = tempCanvas.toDataURL('image/png');
+      img.onload = () => {
+        capturedImages.push(img);
+        logStatus(`Snapped photo ${capturedImages.length} of ${totalPhotos}.`);
+      };
+    }
+
+    // --- QR Code Generator ---
+    function generateQRCode() {
+      const qrBox = document.getElementById('qrcode');
+      qrBox.innerHTML = '';
+      const dummyURL = "https://instagram.com/ok.computah";
+      new QRCode(qrBox, { text: dummyURL, width: 80, height: 80 });
+    }
+
+    // --- YHK Thermal Printer Web Bluetooth Driver ---
+    // --- Updated Web Bluetooth YHK-0F49 Thermal Driver ---
+    
+// --- YHK-0F49 Web Bluetooth Driver Fix ---
+// --- Universal Auto-Discovery Web Bluetooth Driver ---
+    async function connectAndPrint() {
+    try {
+        logStatus("Scanning for Bluetooth devices...");
+
+        // 1. Request device allowing all optional services
+        const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [
+            '000018f0-0000-1000-8000-00805f9b34fb',
+            '495353c2-fe7d-4ae5-8fa9-9fafd205e455',
+            '0000ff00-0000-1000-8000-00805f9b34fb',
+            '0000ae01-0000-1000-8000-00805f9b34fb',
+            '0000af00-0000-1000-8000-00805f9b34fb',
+            'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+            '0000180a-0000-1000-8000-00805f9b34fb',
+            '0000fef5-0000-1000-8000-00805f9b34fb'
+        ]
+        });
+
+        logStatus("Connecting GATT server...");
+        const server = await device.gatt.connect();
+
+        logStatus("Discovering printer services...");
+        const services = await server.getPrimaryServices();
+
+        if (services.length === 0) {
+        throw new Error("No GATT services found. Power-cycle the printer.");
+        }
+
+        let writeChar = null;
+
+        // 2. Iterate through ALL services to find ANY writable characteristic
+        for (const service of services) {
+        try {
+            const characteristics = await service.getCharacteristics();
+            for (const char of characteristics) {
+            const props = char.properties;
+            if (props.write || props.writeWithoutResponse) {
+                writeChar = char;
+                logStatus(`Claimed Write Channel! (${service.uuid.substring(0,8)}...)`);
+                break;
+            }
+            }
+        } catch (err) {
+            // Skip restricted system services
+            continue;
+        }
+        if (writeChar) break;
+        }
+
+        if (!writeChar) {
+        throw new Error("Device found, but no writable GATT characteristic exists.");
+        }
+
+        logStatus("Sending init header...");
+        const initCmd = new Uint8Array([0x1B, 0x40, 0x1D, 0x45, 0x0A, 0x1D, 0x81, 0xF8]);
+        
+        if (writeChar.properties.writeWithoutResponse) {
+        await writeChar.writeValueWithoutResponse(initCmd);
+        } else {
+        await writeChar.writeValue(initCmd);
+        }
+
+        logStatus("Printing strip...");
+        const payload = buildYHKRasterPayload();
+
+        const CHUNK_SIZE = 20;
+        for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
+        const chunk = payload.slice(i, i + CHUNK_SIZE);
+        if (writeChar.properties.writeWithoutResponse) {
+            await writeChar.writeValueWithoutResponse(chunk);
+        } else {
+            await writeChar.writeValue(chunk);
+        }
+        await new Promise(r => setTimeout(r, 8)); // 8ms pacing
+        }
+
+        // Feed paper
+        const feedCmd = new Uint8Array([0x1B, 0x64, 0x04, 0x10, 0xFF, 0xFE]);
+        if (writeChar.properties.writeWithoutResponse) {
+        await writeChar.writeValueWithoutResponse(feedCmd);
+        } else {
+        await writeChar.writeValue(feedCmd);
+        }
+
+        logStatus("Print Job Finished!");
+    } catch (err) {
+        logStatus("Print Error: " + err.message);
+        console.error(err);
+    }
+    }
+
+    async function setupWebcam() {
+    const video = document.getElementById('hiddenVideo');
+    
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+            facingMode: 'user', // Front camera
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+        },
+        audio: false
+        });
+
+        video.srcObject = stream;
+        
+        // Explicitly play video stream after metadata loads
+        video.onloadedmetadata = async () => {
+        try {
+            await video.play();
+            logStatus("Webcam ready.");
+        } catch (e) {
+            logStatus("Play blocked: Click anywhere on screen.");
+        }
+        };
+    } catch (err) {
+        logStatus("Camera Error: " + err.name + " - " + err.message);
+    }
+    }
+
+    function buildYHKRasterPayload() {
+      const width = canvas.width;   // 384 px
+      const height = canvas.height; 
+      const imgData = ctx.getImageData(0, 0, width, height).data;
+      const bytesPerLine = width / 8; // 48 bytes
+      const packets = [];
+
+      for (let y = 0; y < height; y++) {
+        const lineData = new Uint8Array(bytesPerLine);
+
+        for (let x = 0; x < width; x += 8) {
+          let byteVal = 0;
+          for (let bit = 0; bit < 8; bit++) {
+            const pixelIdx = ((y * width) + (x + bit)) * 4;
+            const r = imgData[pixelIdx];
+            const g = imgData[pixelIdx + 1];
+            const b = imgData[pixelIdx + 2];
+            
+            const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+            if (brightness < 128) {
+              byteVal |= (0x80 >> bit); // Thermal pixel black
+            }
+          }
+          lineData[x / 8] = byteVal;
+        }
+
+        const lineHeader = new Uint8Array([0x1D, 0x76, 0x30, 0x00, bytesPerLine & 0xFF, 0x00, 0x01, 0x00]);
+        const fullLine = new Uint8Array(lineHeader.length + lineData.length);
+        fullLine.set(lineHeader, 0);
+        fullLine.set(lineData, lineHeader.length);
+
+        packets.push(fullLine);
+      }
+
+      const totalLength = packets.reduce((acc, p) => acc + p.length, 0);
+      const result = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const p of packets) {
+        result.set(p, offset);
+        offset += p.length;
+      }
+
+      return result;
+    }
+
+    function logStatus(msg) {
+      statusBox.innerText = "Status: " + msg;
+      statusBox.scrollTop = statusBox.scrollHeight;
+    }
+
+    // Launch
+    window.onload = init;
+  </script>
+</body>
+</html>
