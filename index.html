@@ -548,7 +548,6 @@
 
         logStatus("Connecting GATT server...");
         const server = await device.gatt.connect();
-        const services = await server.getPrimaryServices();
 
         for (const service of services) {
 
@@ -578,15 +577,42 @@
         const TX_UUID =
         '49535343-8841-43f4-a8d4-ecbe34729bb3';
 
-        const service =
-        await server.getPrimaryService(
-            SERVICE_UUID
-        );
+        const services = await server.getPrimaryServices();
 
-        const writeChar =
-        await service.getCharacteristic(
-            TX_UUID
-                );
+for (const service of services) {
+
+  console.log("SERVICE:", service.uuid);
+
+  const chars =
+    await service.getCharacteristics();
+
+  for (const c of chars) {
+
+    console.log(
+      "CHARACTERISTIC:",
+      c.uuid,
+      {
+        write: c.properties.write,
+        writeWithoutResponse:
+          c.properties.writeWithoutResponse,
+        notify: c.properties.notify
+      }
+    );
+  }
+}
+
+const service =
+ await server.getPrimaryService(
+   SERVICE_UUID
+ );
+
+const writeChar =
+ await service.getCharacteristic(
+   TX_UUID
+ );
+
+console.log("USING:", writeChar.uuid);
+
         console.log("TESTING PRINTER...");
 
         await writeChar.writeValueWithoutResponse(
