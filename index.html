@@ -530,30 +530,29 @@
       const dummyURL = "https://instagram.com/ok.computah";
       new QRCode(qrBox, { text: dummyURL, width: 80, height: 80 });
     }
-
-    // --- Web Bluetooth ESC/POS Driver ---
+    // --- 2. Low-Level Web Bluetooth Transmission Fix ---
     async function connectAndPrint() {
-      try {
+    try {
         logStatus("Scanning for YHK Printer...");
 
         const targetServices = [
-          '49535343-fe7d-4ae5-8fa9-9fafd205e455',
-          '0000e004-0000-1000-8000-00805f9b34fb',
-          '0000fef5-0000-1000-8000-00805f9b34fb',
-          '000018f0-0000-1000-8000-00805f9b34fb',
-          '0000ff00-0000-1000-8000-00805f9b34fb',
-          '0000ae01-0000-1000-8000-00805f9b34fb',
-          '0000af00-0000-1000-8000-00805f9b34fb'
+        '49535343-fe7d-4ae5-8fa9-9fafd205e455', // Primary ISSC WalkPrint Service
+        '0000e004-0000-1000-8000-00805f9b34fb',
+        '0000fef5-0000-1000-8000-00805f9b34fb',
+        '000018f0-0000-1000-8000-00805f9b34fb',
+        '0000ff00-0000-1000-8000-00805f9b34fb',
+        '0000ae01-0000-1000-8000-00805f9b34fb',
+        '0000af00-0000-1000-8000-00805f9b34fb'
         ];
 
         const device = await navigator.bluetooth.requestDevice({
-          filters: [
+        filters: [
             { namePrefix: 'YHK' },
             { namePrefix: 'Walk' },
             { namePrefix: 'MX' },
             { namePrefix: 'GB' }
-          ],
-          optionalServices: targetServices
+        ],
+        optionalServices: targetServices
         });
 
         logStatus("Connecting GATT server...");
@@ -563,101 +562,97 @@
         let writeChar = null;
 
         for (const serviceUuid of targetServices) {
-          try {
+        try {
             const service = await server.getPrimaryService(serviceUuid);
             const characteristics = await service.getCharacteristics();
             for (const char of characteristics) {
-              if (char.properties.write || char.properties.writeWithoutResponse) {
+            if (char.properties.writeWithoutResponse || char.properties.write) {
                 writeChar = char;
                 logStatus("Service Connected: " + serviceUuid.substring(0, 8));
                 break;
-              }
             }
-          } catch (e) {
+            }
+        } catch (e) {
             continue;
-          }
-          if (writeChar) break;
+        }
+        if (writeChar) break;
         }
 
         if (!writeChar) {
-          throw new Error("Connected, but printer writable channel was not found.");
+        throw new Error("Connected, but writable channel was not found.");
         }
 
-        logStatus("Sending init header...");
+        // A. ESC/POS Hardware Init + Heating Energy Commands
+        logStatus("Waking printer hardware...");
         const initCmd = new Uint8Array([0x1B, 0x40, 0x1D, 0x49, 0xF0, 0xFF]);
-        await sendChunk(writeChar, initCmd);
+        await sendChunkForce(writeChar, initCmd);
 
-        logStatus("Printing...");
+        // B. Stream Raster Payload in 20-byte BLE Packets
+        logStatus("Printing photo...");
         const payload = buildYHKRasterPayload();
-
         const CHUNK_SIZE = 20;
+
         for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
-          const chunk = payload.slice(i, i + CHUNK_SIZE);
-          await sendChunk(writeChar, chunk);
-          await new Promise(r => setTimeout(r, 8));
+        const chunk = payload.slice(i, i + CHUNK_SIZE);
+        await sendChunkForce(writeChar, chunk);
+        await new Promise(r => setTimeout(r, 8)); // Pacing delay
         }
 
+        // C. Paper Feed & Buffer Flush Commands
         logStatus("Feeding paper...");
-        const feedCmd = new Uint8Array([0x1B, 0x64, 0x04]);
-        await sendChunk(writeChar, feedCmd);
+        const feedCmd = new Uint8Array([0x1B, 0x64, 0x06, 0x0A, 0x0A]);
+        await sendChunkForce(writeChar, feedCmd);
 
         logStatus("Print Job Completed!");
-      } catch (err) {
+    } catch (err) {
         logStatus("Print Error: " + err.message);
         console.error(err);
-      }
+    }
     }
 
-    async function sendChunk(char, data) {
-      if (char.properties.writeWithoutResponse) {
+    // Force writeWithoutResponse to avoid waiting for non-existent hardware ACKs
+    async function sendChunkForce(char, data) {
+    if (char.properties.writeWithoutResponse) {
         await char.writeValueWithoutResponse(data);
-      } else {
+    } else {
         await char.writeValue(data);
-      }
+    }
     }
 
     function buildYHKRasterPayload() {
-      const width = canvas.width;  // 384 px
-      const height = canvas.height; 
-      const imgData = ctx.getImageData(0, 0, width, height).data;
-      const bytesPerLine = width / 8; // 48 bytes
-      const packets = [];
+        const width = canvas.width;  // 384 pixels
+        const height = canvas.height; 
+        const imgData = ctx.getImageData(0, 0, width, height).data;
+        const bytesPerLine = width / 8; // 48 bytes per line
 
-      for (let y = 0; y < height; y++) {
-        const lineData = new Uint8Array(bytesPerLine);
+        const rasterBytes = [];
 
-        for (let x = 0; x < width; x += 8) {
-          let byteVal = 0;
-          for (let bit = 0; bit < 8; bit++) {
-            const pixelIdx = ((y * width) + (x + bit)) * 4;
-            const r = imgData[pixelIdx];
-            
-            // Thermal pixel black threshold
-            if (r < 128) {
-              byteVal |= (0x80 >> bit);
+        // ESC/POS GS v 0 (1D 76 30 00) Single-Block Command Header
+        rasterBytes.push(
+            0x1D, 0x76, 0x30, 0x00,
+            bytesPerLine & 0xFF, (bytesPerLine >> 8) & 0xFF,
+            height & 0xFF, (height >> 8) & 0xFF
+        );
+
+        // Convert canvas pixel array to 1-bit bitmap stream
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x += 8) {
+            let byteVal = 0;
+            for (let bit = 0; bit < 8; bit++) {
+                const pixelIdx = ((y * width) + (x + bit)) * 4;
+                const r = imgData[pixelIdx];
+                
+                // Dark pixels = 1 bit (Thermal head heats up)
+                if (r < 128) {
+                byteVal |= (0x80 >> bit);
+                }
             }
-          }
-          lineData[x / 8] = byteVal;
+            rasterBytes.push(byteVal);
+            }
         }
 
-        const lineHeader = new Uint8Array([0x1D, 0x76, 0x30, 0x00, bytesPerLine & 0xFF, 0x00, 0x01, 0x00]);
-        const fullLine = new Uint8Array(lineHeader.length + lineData.length);
-        fullLine.set(lineHeader, 0);
-        fullLine.set(lineData, lineHeader.length);
-
-        packets.push(fullLine);
-      }
-
-      const totalLength = packets.reduce((acc, p) => acc + p.length, 0);
-      const result = new Uint8Array(totalLength);
-      let offset = 0;
-      for (const p of packets) {
-        result.set(p, offset);
-        offset += p.length;
-      }
-
-      return result;
-    }
+        return new Uint8Array(rasterBytes);
+        }
 
     function logStatus(msg) {
       statusBox.innerText = "Status: " + msg;
