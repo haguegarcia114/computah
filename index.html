@@ -551,42 +551,76 @@
         await new Promise(r => setTimeout(r, 400));
 
         // Find primary service and writable characteristic
-        let writeChar = null;
-        const services = await server.getPrimaryServices();
+        const SERVICE_UUID =
+        '49535343-fe7d-4ae5-8fa9-9fafd205e455';
 
-        for (const service of services) {
-          const chars = await service.getCharacteristics();
-          for (const c of chars) {
-            // Target the ISSC TX data characteristic or any writeWithoutResponse characteristic
-            if (c.properties.writeWithoutResponse || c.properties.write) {
-              writeChar = c;
-              break;
-            }
-          }
-          if (writeChar) break;
-        }
+        const TX_UUID =
+        '49535343-8841-43f4-a8d4-ecbe34729bb3';
 
-        if (!writeChar) {
-          throw new Error("No writable channel found. Power-cycle printer.");
-        }
+        const service =
+        await server.getPrimaryService(
+            SERVICE_UUID
+        );
+
+        const writeChar =
+        await service.getCharacteristic(
+            TX_UUID
+        );
 
         logStatus("Sending hardware wake sequence...");
-        // Command sequence: Initialize + Heating Density + Print Speed
         const wakeCmd = new Uint8Array([
-          0x1B, 0x40,             // ESC @ Initialize
-          0x1D, 0x45, 0x0A,       // Heating energy
-          0x1D, 0x49, 0xF0, 0xFF, // Print density max
-          0x1B, 0x33, 0x00        // Set line spacing 0
+          0x1B,
+          0x40
         ]);
         await sendDataInChunks(writeChar, wakeCmd);
 
         logStatus("Printing thermal payload...");
+
+        await sendDataInChunks(
+        writeChar,
+        new Uint8Array([
+            0x1B,
+            0x40
+        ])
+        );
+
+        await new Promise(
+        r => setTimeout(r, 250)
+        );
+
+        console.log(
+        "Canvas:",
+        canvas.width,
+        canvas.height
+        );
+
+        if (canvas.height > 900) {
+
+        logStatus(
+            "Warning: image very tall. YHK printers sometimes reject images >900px."
+        );
+
+        }
         const rasterPayload = buildYHKLineByLinePayload();
+
+        console.log(
+        "Payload bytes:",
+        rasterPayload.length
+        );
+
+        logStatus(
+        `Sending ${rasterPayload.length} bytes...`
+        );
+
         await sendDataInChunks(writeChar, rasterPayload);
 
         logStatus("Feeding paper motor...");
         // ESC d 6 (Feed 6 lines) + Line Feeds
-        const feedCmd = new Uint8Array([0x1B, 0x64, 0x06, 0x0A, 0x0A, 0x0A]);
+        const feedCmd = new Uint8Array([
+        0x1B,
+        0x64,
+        0x08
+        ]);
         await sendDataInChunks(writeChar, feedCmd);
 
         logStatus("Print Job Completed!");
@@ -597,46 +631,134 @@
       }
     }
 
-    async function sendDataInChunks(characteristic, dataArray) {
-      const CHUNK_SIZE = 20; // 20-byte BLE boundary
-      for (let i = 0; i < dataArray.length; i += CHUNK_SIZE) {
-        const chunk = dataArray.slice(i, i + CHUNK_SIZE);
-        if (characteristic.properties.writeWithoutResponse) {
-          await characteristic.writeValueWithoutResponse(chunk);
-        } else {
-          await characteristic.writeValue(chunk);
-        }
-        await new Promise(r => setTimeout(r, 10)); // Increased to 10ms pacing
-      }
+    async function sendDataInChunks(
+    characteristic,
+    dataArray
+    ) {
+
+    const CHUNK_SIZE = 180;
+
+    for (
+        let i = 0;
+        i < dataArray.length;
+        i += CHUNK_SIZE
+    ) {
+
+        const chunk =
+        dataArray.slice(
+            i,
+            i + CHUNK_SIZE
+        );
+
+        await characteristic.writeValueWithoutResponse(
+        chunk
+        );
+
+        await new Promise(
+        resolve => setTimeout(resolve, 20)
+        );
+    }
     }
 
-    // Line-by-line raster formatter guaranteed for YHK firmware
     function buildYHKLineByLinePayload() {
-      const width = canvas.width;  // 384 px
-      const height = canvas.height;
-      const imgData = ctx.getImageData(0, 0, width, height).data;
-      const bytesPerLine = width / 8; // 48 bytes
-      const result = [];
 
-      for (let y = 0; y < height; y++) {
-        // Line Header: GS v 0 0 [48] [0] [1] [0]
-        result.push(0x1D, 0x76, 0x30, 0x00, 0x30, 0x00, 0x01, 0x00);
+    const width = canvas.width;
+    const height = canvas.height;
 
-        for (let x = 0; x < width; x += 8) {
-          let byteVal = 0;
-          for (let bit = 0; bit < 8; bit++) {
-            const pixelIdx = ((y * width) + (x + bit)) * 4;
-            const r = imgData[pixelIdx];
-            if (r < 128) {
-              byteVal |= (0x80 >> bit);
+    const widthBytes = Math.ceil(width / 8);
+
+    const imageData =
+        ctx.getImageData(
+        0,
+        0,
+        width,
+        height
+        ).data;
+
+    const bitmap =
+        new Uint8Array(
+        widthBytes * height
+        );
+
+    let byteIndex = 0;
+
+    for (let y = 0; y < height; y++) {
+
+        for (
+        let x = 0;
+        x < width;
+        x += 8
+        ) {
+
+        let byteVal = 0;
+
+        for (
+            let bit = 0;
+            bit < 8;
+            bit++
+        ) {
+
+            const px = x + bit;
+
+            if (px >= width) {
+            continue;
             }
-          }
-          result.push(byteVal);
-        }
-      }
 
-      return new Uint8Array(result);
+            const idx =
+            (y * width + px) * 4;
+
+            const r =
+            imageData[idx];
+
+            const g =
+            imageData[idx + 1];
+
+            const b =
+            imageData[idx + 2];
+
+            const gray =
+            (r + g + b) / 3;
+
+            if (gray < 128) {
+            byteVal |=
+                (0x80 >> bit);
+            }
+        }
+
+        bitmap[byteIndex++] =
+            byteVal;
+        }
     }
+
+    const header =
+        new Uint8Array([
+        0x1D,
+        0x76,
+        0x30,
+        0x00,
+
+        widthBytes & 0xff,
+        (widthBytes >> 8) & 0xff,
+
+        height & 0xff,
+        (height >> 8) & 0xff
+        ]);
+
+    const payload =
+        new Uint8Array(
+        header.length +
+        bitmap.length
+        );
+
+    payload.set(header, 0);
+    payload.set(
+        bitmap,
+        header.length
+    );
+
+    return payload;
+    }
+
 
     function logStatus(msg) {
       statusBox.innerText = "Status: " + msg;
