@@ -2,164 +2,408 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YHK Thermal Photobooth</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>untitled - Paint</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
+    :root {
+      --win-bg: #c0c0c0;
+      --win-border-light: #ffffff;
+      --win-border-dark: #808080;
+      --win-border-darker: #000000;
+      --navy: #000080;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      font-family: "MS Sans Serif", "Courier New", monospace;
+      user-select: none;
+      -webkit-user-select: none;
     }
+
     body {
-      background-color: #121212;
-      color: #ffffff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #008080;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      padding: 6px;
+    }
+
+    /* Main Window Shell */
+    .window {
+      background: var(--win-bg);
+      border: 2px solid;
+      border-color: var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
+      width: 100%;
+      height: 100%;
       display: flex;
       flex-direction: column;
+      padding: 2px;
+    }
+
+    /* Title Bar */
+    .title-bar {
+      background: var(--navy);
+      color: white;
+      padding: 2px 4px;
+      font-weight: bold;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 20px;
     }
-    h1 {
-      font-size: 1.5rem;
-      margin-bottom: 15px;
-      color: #e0e0e0;
+
+    .title-controls span {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      background: var(--win-bg);
+      color: black;
+      text-align: center;
+      line-height: 11px;
+      border: 1px solid;
+      border-color: var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
+      font-size: 10px;
+      margin-left: 2px;
     }
-    /* Thermal Canvas Container */
-    .preview-container {
-      position: relative;
-      background-color: #f8f6f0; /* Receipt paper tint */
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-      margin-bottom: 20px;
-    }
-    canvas {
-      display: block;
-      width: 100%;
-      max-width: 384px;
-      height: auto;
-      border: 1px solid #ccc;
-      image-rendering: pixelated; /* Sharp dither dots */
-    }
-    .controls {
+
+    /* Menu Bar */
+    .menu-bar {
       display: flex;
       gap: 12px;
-      width: 100%;
-      max-width: 384px;
+      padding: 2px 6px;
+      font-size: 12px;
+      border-bottom: 1px solid var(--win-border-dark);
     }
-    button {
+
+    /* Main Layout Area */
+    .main-body {
+      display: flex;
       flex: 1;
-      padding: 14px;
-      font-size: 1rem;
+      margin-top: 2px;
+      gap: 4px;
+      overflow: hidden;
+    }
+
+    /* Classic 2-Column Square Icon Tool Sidebar */
+    .tools-sidebar {
+      width: 56px;
+      background: var(--win-bg);
+      display: grid;
+      grid-template-columns: repeat(2, 25px);
+      grid-auto-rows: 25px;
+      gap: 2px;
+      padding: 2px;
+      border: 1px solid var(--win-border-dark);
+    }
+
+    .tool-box {
+      background: var(--win-bg);
+      border: 1px solid;
+      border-color: var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 12px;
+      pointer-events: none; /* Decorative only */
+    }
+
+    /* Center Canvas Viewport */
+    .viewport {
+      flex: 1;
+      background: #808080;
+      border: 2px inset var(--win-border-light);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      overflow: auto;
+      padding: 10px;
+    }
+
+    canvas {
+      background: #ffffff;
+      border: 1px solid #000;
+      box-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+      width: 384px; /* 3-inch printing width standard */
+      height: auto;
+      image-rendering: pixelated; /* Sharp dither dots */
+    }
+
+    /* Hidden Camera & QR Elements */
+    #hiddenVideo {
+      display: none;
+    }
+
+    #qrcode {
+      display: none;
+    }
+
+    /* Right Controls Panel */
+    .control-panel {
+      width: 200px;
+      background: var(--win-bg);
+      border: 1px solid var(--win-border-dark);
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .panel-section {
+      border: 2px inset var(--win-border-light);
+      padding: 6px;
+      background: #d4d4d4;
+    }
+
+    .panel-title {
+      font-size: 11px;
       font-weight: bold;
-      border: none;
-      border-radius: 6px;
+      margin-bottom: 4px;
+    }
+
+    button {
+      background: var(--win-bg);
+      border: 2px solid;
+      border-color: var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
+      padding: 6px;
+      font-weight: bold;
+      font-size: 11px;
       cursor: pointer;
-      transition: background-color 0.2s ease;
+      width: 100%;
     }
+
+    button:active {
+      border-color: var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark);
+    }
+
     .btn-snap {
-      background-color: #3b82f6;
+      background: #000080;
       color: white;
+      height: 38px;
     }
-    .btn-snap:active {
-      background-color: #2563eb;
-    }
+
     .btn-print {
-      background-color: #10b981;
+      background: #008000;
       color: white;
+      height: 42px;
+      font-size: 13px;
     }
-    .btn-print:active {
-      background-color: #059669;
+
+    .status-text {
+      font-size: 10px;
+      background: white;
+      border: 1px inset var(--win-border-dark);
+      padding: 4px;
+      height: 50px;
+      overflow-y: auto;
     }
-    #status {
-      margin-top: 15px;
-      font-size: 0.85rem;
-      color: #aaa;
-      text-align: center;
-      max-width: 384px;
+
+    /* Bottom Color Palette Bar */
+    .color-bar {
+      height: 32px;
+      background: var(--win-bg);
+      border-top: 1px solid var(--win-border-dark);
+      display: flex;
+      align-items: center;
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .active-color-box {
+      width: 28px;
+      height: 24px;
+      border: 2px inset var(--win-border-light);
+      background: #000;
+    }
+
+    .swatches {
+      display: grid;
+      grid-template-rows: repeat(2, 11px);
+      grid-auto-flow: column;
+      gap: 1px;
+    }
+
+    .swatch {
+      width: 11px;
+      height: 11px;
+      border: 1px solid #808080;
     }
   </style>
 </head>
 <body>
 
-  <h1>YHK Photobooth</h1>
+  <div class="window">
+    <!-- Title Bar -->
+    <div class="title-bar">
+      <span>untitled - Paint</span>
+      <div class="title-controls">
+        <span>_</span>
+        <span>□</span>
+        <span>X</span>
+      </div>
+    </div>
 
-  <!-- Hidden webcam source -->
-  <video id="webcam" autoplay playsinline style="display: none;"></video>
+    <!-- Menu Bar -->
+    <div class="menu-bar">
+      <span>File</span>
+      <span>Edit</span>
+      <span>View</span>
+      <span>Image</span>
+      <span>Options</span>
+      <span>Help</span>
+    </div>
 
-  <!-- Visible Dithered Canvas -->
-  <div class="preview-container">
-    <canvas id="previewCanvas" width="384" height="512"></canvas>
+    <!-- Main Body Area -->
+    <div class="main-body">
+      
+      <!-- Classic 2-Column Square Tools -->
+      <div class="tools-sidebar">
+        <div class="tool-box">✂️</div>
+        <div class="tool-box">✂️</div>
+        <div class="tool-box">🧹</div>
+        <div class="tool-box">🪣</div>
+        <div class="tool-box">👁️</div>
+        <div class="tool-box">🔍</div>
+        <div class="tool-box">✏️</div>
+        <div class="tool-box">🖌️</div>
+        <div class="tool-box">💨</div>
+        <div class="tool-box"><b>A</b></div>
+        <div class="tool-box">╲</div>
+        <div class="tool-box">∿</div>
+        <div class="tool-box">▭</div>
+        <div class="tool-box">⬡</div>
+        <div class="tool-box">◯</div>
+        <div class="tool-box">▢</div>
+      </div>
+
+      <!-- Main Interactive Canvas -->
+      <div class="viewport">
+        <canvas id="photoCanvas" width="384" height="600"></canvas>
+      </div>
+
+      <!-- Hidden Video Stream & QR Container -->
+      <video id="hiddenVideo" autoplay playsinline muted style="display:none;"></video>
+      <div id="qrcode"></div>
+
+      <!-- Right Photobooth Controls -->
+      <div class="control-panel">
+        <div class="panel-section">
+          <div class="panel-title">1. Photo Layout</div>
+          <select id="photoCountSelect" onchange="changeLayout()" style="width: 100%; padding: 4px; font-weight: bold;">
+            <option value="1">1 Photo Strip</option>
+            <option value="2">2 Photos Stacked</option>
+            <option value="3" selected>3 Photos Stacked</option>
+            <option value="4">4 Photos Stacked</option>
+          </select>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-title">2. Capture</div>
+          <button class="btn-snap" onclick="snapPhoto()">📸 SNAP NEXT</button>
+          <button style="margin-top: 4px;" onclick="resetPhotos()">🔄 Reset Canvas</button>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-title">3. Thermal Print</div>
+          <button class="btn-print" onclick="connectAndPrint()">🖨️ PRINT</button>
+        </div>
+
+        <div class="status-text" id="statusBox">Status: Select layout and snap photos.</div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Palette Bar -->
+    <div class="color-bar">
+      <div class="active-color-box"></div>
+      <div class="swatches">
+        <div class="swatch" style="background:#000000"></div>
+        <div class="swatch" style="background:#808080"></div>
+        <div class="swatch" style="background:#800000"></div>
+        <div class="swatch" style="background:#808000"></div>
+        <div class="swatch" style="background:#008000"></div>
+        <div class="swatch" style="background:#008080"></div>
+        <div class="swatch" style="background:#000080"></div>
+        <div class="swatch" style="background:#800080"></div>
+        <div class="swatch" style="background:#ffffff"></div>
+        <div class="swatch" style="background:#c0c0c0"></div>
+        <div class="swatch" style="background:#ff0000"></div>
+        <div class="swatch" style="background:#ffff00"></div>
+        <div class="swatch" style="background:#00ff00"></div>
+        <div class="swatch" style="background:#00ffff"></div>
+        <div class="swatch" style="background:#0000ff"></div>
+        <div class="swatch" style="background:#ff00ff"></div>
+      </div>
+    </div>
   </div>
-
-  <div class="controls">
-    <button id="snapBtn" class="btn-snap" onclick="toggleFreeze()">Freeze</button>
-    <button class="btn-print" onclick="connectAndPrint()">Print</button>
-  </div>
-
-  <div id="status">Status: Initializing camera...</div>
 
   <script>
-    const video = document.getElementById('webcam');
-    const canvas = document.getElementById('previewCanvas');
-    const ctx = canvas.getContext('2d');
-    const statusEl = document.getElementById('status');
-    const snapBtn = document.getElementById('snapBtn');
+    const canvas = document.getElementById('photoCanvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const video = document.getElementById('hiddenVideo');
+    const statusBox = document.getElementById('statusBox');
 
-    let isFrozen = false;
-    let animFrameId = null;
-    let savedPrinterDevice = null;
+    let totalPhotos = 3;
+    let capturedImages = [];
+    let liveAnimationId = null;
 
-    function logStatus(msg) {
-      statusEl.textContent = "Status: " + msg;
-      console.log("[Photobooth]", msg);
+    const FOOTER_HEIGHT = 100;
+    const CANVAS_WIDTH = 384;
+    const PHOTO_BOX_HEIGHT = 220;
+
+    async function init() {
+      await setupWebcam();
+      changeLayout();
     }
 
-    // --- 1. Real-Time Dithered Camera Engine ---
-    async function initCamera() {
+    async function setupWebcam() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 384 }, height: { ideal: 512 }, facingMode: 'user' }
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false
         });
         video.srcObject = stream;
-        video.onloadedmetadata = () => {
-          video.play();
-          renderLoop();
-          logStatus("Camera Ready");
+        video.onloadedmetadata = async () => {
+          try {
+            await video.play();
+            logStatus("Webcam ready.");
+          } catch (e) {
+            logStatus("Play blocked: Click anywhere on screen.");
+          }
         };
       } catch (err) {
-        logStatus("Camera Error: " + err.message);
+        logStatus("Camera Error: " + err.name + " - " + err.message);
       }
     }
 
-    function toggleFreeze() {
-      isFrozen = !isFrozen;
-      if (isFrozen) {
-        snapBtn.textContent = "Resume";
-        cancelAnimationFrame(animFrameId);
-        logStatus("Frame Captured");
-      } else {
-        snapBtn.textContent = "Freeze";
-        renderLoop();
-        logStatus("Camera Live");
-      }
+    function changeLayout() {
+      totalPhotos = parseInt(document.getElementById('photoCountSelect').value);
+      capturedImages = [];
+      canvas.height = (totalPhotos * PHOTO_BOX_HEIGHT) + FOOTER_HEIGHT;
+      generateQRCode();
+      startLiveRenderLoop();
+      logStatus(`Layout set to ${totalPhotos} photos.`);
     }
 
-    function renderLoop() {
-      if (isFrozen) return;
+    function resetPhotos() {
+      capturedImages = [];
+      startLiveRenderLoop();
+      logStatus("Canvas reset.");
+    }
 
-      // Draw camera frame scaled to 384px width
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      // Apply Floyd-Steinberg 1-Bit Dithering
-      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    // --- Floyd-Steinberg Dithering Function ---
+    function applyDitheringToCtx(targetCtx, x, y, width, height) {
+      const imgData = targetCtx.getImageData(x, y, width, height);
       const data = imgData.data;
       const w = imgData.width;
       const h = imgData.height;
 
-      // Grayscale pass
+      // 1. Grayscale
       for (let i = 0; i < data.length; i += 4) {
         const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
         data[i] = gray;
@@ -167,10 +411,10 @@
         data[i + 2] = gray;
       }
 
-      // Dithering pass
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          const idx = (y * w + x) * 4;
+      // 2. Error diffusion
+      for (let currentY = 0; currentY < h; currentY++) {
+        for (let currentX = 0; currentX < w; currentX++) {
+          const idx = (currentY * w + currentX) * 4;
           const oldPixel = data[idx];
           const newPixel = oldPixel < 128 ? 0 : 255;
 
@@ -180,103 +424,152 @@
 
           const err = oldPixel - newPixel;
 
-          if (x + 1 < w) data[idx + 4] += err * (7 / 16);
-          if (x - 1 >= 0 && y + 1 < h) data[idx + (w - 1) * 4] += err * (3 / 16);
-          if (y + 1 < h) data[idx + w * 4] += err * (5 / 16);
-          if (x + 1 < w && y + 1 < h) data[idx + (w + 1) * 4] += err * (1 / 16);
+          if (currentX + 1 < w) data[idx + 4] += err * (7 / 16);
+          if (currentX - 1 >= 0 && currentY + 1 < h) data[idx + (w - 1) * 4] += err * (3 / 16);
+          if (currentY + 1 < h) data[idx + w * 4] += err * (5 / 16);
+          if (currentX + 1 < w && currentY + 1 < h) data[idx + (w + 1) * 4] += err * (1 / 16);
         }
       }
 
-      ctx.putImageData(imgData, 0, 0);
-      animFrameId = requestAnimationFrame(renderLoop);
+      targetCtx.putImageData(imgData, x, y);
     }
 
-    // --- 2. ESC/POS Raster Payload Generator ---
-    function buildYHKRasterPayload() {
-      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const pixels = imgData.data;
-      const w = canvas.width;  // 384
-      const h = canvas.height; // 512
-      const bytesPerRow = w / 8; // 48 bytes per line
+    function startLiveRenderLoop() {
+      if (liveAnimationId) cancelAnimationFrame(liveAnimationId);
 
-      const rasterData = [];
+      function render() {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Header: GS v 0 0 [xL] [xH] [yL] [yH]
-      rasterData.push(0x1D, 0x76, 0x30, 0x00);
-      rasterData.push(bytesPerRow & 0xFF, (bytesPerRow >> 8) & 0xFF);
-      rasterData.push(h & 0xFF, (h >> 8) & 0xFF);
+        const currentSlot = capturedImages.length;
 
-      // Pack 8 1-bit pixels into 1 byte
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x += 8) {
-          let byte = 0;
-          for (let bit = 0; bit < 8; bit++) {
-            const idx = (y * w + (x + bit)) * 4;
-            // Black pixel in thermal = 1 bit
-            if (pixels[idx] < 128) {
-              byte |= (1 << (7 - bit));
-            }
+        for (let i = 0; i < totalPhotos; i++) {
+          const yPos = i * PHOTO_BOX_HEIGHT;
+
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(10, yPos + 10, CANVAS_WIDTH - 20, PHOTO_BOX_HEIGHT - 20);
+
+          if (i < currentSlot) {
+            ctx.drawImage(capturedImages[i], 12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
+          } else if (i === currentSlot && video.readyState === 4) {
+            // Render Live Camera Stream
+            ctx.save();
+            ctx.translate(CANVAS_WIDTH - 12, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
+            ctx.restore();
+
+            // Apply live black & white dithered dots effect
+            applyDitheringToCtx(ctx, 12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
+          } else {
+            ctx.fillStyle = '#F0F0F0';
+            ctx.fillRect(12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
           }
-          rasterData.push(byte);
         }
+
+        renderFooter();
+        liveAnimationId = requestAnimationFrame(render);
       }
 
-      return new Uint8Array(rasterData);
+      render();
     }
 
-    // --- 3. Web Bluetooth Communication Engine ---
+    function renderFooter() {
+      const footerY = canvas.height - FOOTER_HEIGHT;
+
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(10, footerY);
+      ctx.lineTo(CANVAS_WIDTH - 10, footerY);
+      ctx.stroke();
+
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 20px "Courier New"';
+      ctx.fillText('Ok Computah', 16, footerY + 38);
+
+      ctx.font = '12px "Courier New"';
+      ctx.fillText('@ok.computah', 16, footerY + 58);
+
+      const qrImg = document.querySelector('#qrcode img');
+      if (qrImg && qrImg.src) {
+        ctx.drawImage(qrImg, CANVAS_WIDTH - 90, footerY + 10, 80, 80);
+      }
+    }
+
+    function snapPhoto() {
+      if (capturedImages.length >= totalPhotos) {
+        logStatus("All slots full! Press Print or Reset.");
+        return;
+      }
+
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = CANVAS_WIDTH - 24;
+      tempCanvas.height = PHOTO_BOX_HEIGHT - 24;
+      const tempCtx = tempCanvas.getContext('2d');
+
+      tempCtx.translate(tempCanvas.width, 0);
+      tempCtx.scale(-1, 1);
+      tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+
+      // Freeze dithered image to strip array
+      applyDitheringToCtx(tempCtx, 0, 0, tempCanvas.width, tempCanvas.height);
+
+      const img = new Image();
+      img.src = tempCanvas.toDataURL('image/png');
+      img.onload = () => {
+        capturedImages.push(img);
+        logStatus(`Snapped photo ${capturedImages.length} of ${totalPhotos}.`);
+      };
+    }
+
+    function generateQRCode() {
+      const qrBox = document.getElementById('qrcode');
+      qrBox.innerHTML = '';
+      const dummyURL = "https://instagram.com/ok.computah";
+      new QRCode(qrBox, { text: dummyURL, width: 80, height: 80 });
+    }
+
+    // --- Web Bluetooth ESC/POS Driver ---
     async function connectAndPrint() {
       try {
-        let device = savedPrinterDevice;
-
-        // Auto-detect previously granted devices
-        if (!device && navigator.bluetooth.getDevices) {
-          const existing = await navigator.bluetooth.getDevices();
-          if (existing.length > 0) {
-            device = existing[0];
-            logStatus("Connecting to saved printer...");
-          }
-        }
+        logStatus("Scanning for YHK Printer...");
 
         const targetServices = [
           '49535343-fe7d-4ae5-8fa9-9fafd205e455',
           '0000e004-0000-1000-8000-00805f9b34fb',
           '0000fef5-0000-1000-8000-00805f9b34fb',
           '000018f0-0000-1000-8000-00805f9b34fb',
-          '0000ff00-0000-1000-8000-00805f9b34fb'
+          '0000ff00-0000-1000-8000-00805f9b34fb',
+          '0000ae01-0000-1000-8000-00805f9b34fb',
+          '0000af00-0000-1000-8000-00805f9b34fb'
         ];
 
-        // Request device if none cached
-        if (!device) {
-          logStatus("Scanning for Bluetooth Printer...");
-          device = await navigator.bluetooth.requestDevice({
-            filters: [
-              { namePrefix: 'YHK' },
-              { namePrefix: 'Walk' },
-              { namePrefix: 'MX' },
-              { namePrefix: 'GB' }
-            ],
-            optionalServices: targetServices
-          });
-        }
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [
+            { namePrefix: 'YHK' },
+            { namePrefix: 'Walk' },
+            { namePrefix: 'MX' },
+            { namePrefix: 'GB' }
+          ],
+          optionalServices: targetServices
+        });
 
-        savedPrinterDevice = device;
+        logStatus("Connecting GATT server...");
+        const server = await device.gatt.connect();
+        await new Promise(r => setTimeout(r, 400));
 
-        if (!device.gatt.connected) {
-          logStatus("Establishing GATT connection...");
-          await device.gatt.connect();
-          await new Promise(r => setTimeout(r, 400)); // Mobile BLE delay
-        }
-
-        // Find writable GATT characteristic
         let writeChar = null;
-        for (const uuid of targetServices) {
+
+        for (const serviceUuid of targetServices) {
           try {
-            const service = await device.gatt.getPrimaryService(uuid);
-            const chars = await service.getCharacteristics();
-            for (const c of chars) {
-              if (c.properties.write || c.properties.writeWithoutResponse) {
-                writeChar = c;
+            const service = await server.getPrimaryService(serviceUuid);
+            const characteristics = await service.getCharacteristics();
+            for (const char of characteristics) {
+              if (char.properties.write || char.properties.writeWithoutResponse) {
+                writeChar = char;
+                logStatus("Service Connected: " + serviceUuid.substring(0, 8));
                 break;
               }
             }
@@ -287,40 +580,35 @@
         }
 
         if (!writeChar) {
-          throw new Error("No writable GATT channel found. Cycle printer power.");
+          throw new Error("Connected, but printer writable channel was not found.");
         }
 
-        // Send Init & Density Header
-        logStatus("Sending print header...");
+        logStatus("Sending init header...");
         const initCmd = new Uint8Array([0x1B, 0x40, 0x1D, 0x49, 0xF0, 0xFF]);
-        await sendData(writeChar, initCmd);
+        await sendChunk(writeChar, initCmd);
 
-        // Stream Raster Payload
-        logStatus("Printing thermal image...");
+        logStatus("Printing...");
         const payload = buildYHKRasterPayload();
-        const CHUNK_SIZE = 20;
 
+        const CHUNK_SIZE = 20;
         for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
           const chunk = payload.slice(i, i + CHUNK_SIZE);
-          await sendData(writeChar, chunk);
-          await new Promise(r => setTimeout(r, 8)); // Chunk pacing delay
+          await sendChunk(writeChar, chunk);
+          await new Promise(r => setTimeout(r, 8));
         }
 
-        // Send Paper Feed Command
         logStatus("Feeding paper...");
         const feedCmd = new Uint8Array([0x1B, 0x64, 0x04]);
-        await sendData(writeChar, feedCmd);
+        await sendChunk(writeChar, feedCmd);
 
-        logStatus("Print Job Complete!");
-
+        logStatus("Print Job Completed!");
       } catch (err) {
         logStatus("Print Error: " + err.message);
-        savedPrinterDevice = null;
         console.error(err);
       }
     }
 
-    async function sendData(char, data) {
+    async function sendChunk(char, data) {
       if (char.properties.writeWithoutResponse) {
         await char.writeValueWithoutResponse(data);
       } else {
@@ -328,8 +616,55 @@
       }
     }
 
-    // Start system
-    initCamera();
+    function buildYHKRasterPayload() {
+      const width = canvas.width;  // 384 px
+      const height = canvas.height; 
+      const imgData = ctx.getImageData(0, 0, width, height).data;
+      const bytesPerLine = width / 8; // 48 bytes
+      const packets = [];
+
+      for (let y = 0; y < height; y++) {
+        const lineData = new Uint8Array(bytesPerLine);
+
+        for (let x = 0; x < width; x += 8) {
+          let byteVal = 0;
+          for (let bit = 0; bit < 8; bit++) {
+            const pixelIdx = ((y * width) + (x + bit)) * 4;
+            const r = imgData[pixelIdx];
+            
+            // Thermal pixel black threshold
+            if (r < 128) {
+              byteVal |= (0x80 >> bit);
+            }
+          }
+          lineData[x / 8] = byteVal;
+        }
+
+        const lineHeader = new Uint8Array([0x1D, 0x76, 0x30, 0x00, bytesPerLine & 0xFF, 0x00, 0x01, 0x00]);
+        const fullLine = new Uint8Array(lineHeader.length + lineData.length);
+        fullLine.set(lineHeader, 0);
+        fullLine.set(lineData, lineHeader.length);
+
+        packets.push(fullLine);
+      }
+
+      const totalLength = packets.reduce((acc, p) => acc + p.length, 0);
+      const result = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const p of packets) {
+        result.set(p, offset);
+        offset += p.length;
+      }
+
+      return result;
+    }
+
+    function logStatus(msg) {
+      statusBox.innerText = "Status: " + msg;
+      statusBox.scrollTop = statusBox.scrollHeight;
+    }
+
+    window.onload = init;
   </script>
 </body>
 </html>
