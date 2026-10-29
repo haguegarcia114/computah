@@ -525,124 +525,116 @@
       new QRCode(qrBox, { text: dummyURL, width: 80, height: 80 });
     }
 
-    async function connectAndPrint() {
-    try {
+async function connectAndPrint() {
+  try {
 
-        logStatus("Scanning for YHK Printer...");
+    logStatus("Scanning for YHK Printer...");
 
-        const device = await navigator.bluetooth.requestDevice({
-        filters: [
-            { namePrefix: "YHK" },
-            { namePrefix: "Walk" },
-            { namePrefix: "MX" },
-            { namePrefix: "GB" }
-        ],
-        optionalServices: [
-            "49535343-fe7d-4ae5-8fa9-9fafd205e455"
-        ]
-        });
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [
+        { namePrefix: "YHK" },
+        { namePrefix: "Walk" },
+        { namePrefix: "MX" },
+        { namePrefix: "GB" }
+      ],
+      optionalServices: [
+        "49535343-fe7d-4ae5-8fa9-9fafd205e455"
+      ]
+    });
 
-        logStatus("Connecting...");
+    logStatus("Connecting...");
 
-        const server = await device.gatt.connect();
+    const server = await device.gatt.connect();
 
-        await new Promise(
-        r => setTimeout(r, 500)
-        );
+    await new Promise(
+      r => setTimeout(r, 500)
+    );
 
-        const allServices =
-        await server.getPrimaryServices();
+    const allServices =
+      await server.getPrimaryServices();
 
-        console.log("===== SERVICES =====");
+    console.log("===== SERVICES =====");
 
-        for (const s of allServices) {
+    for (const s of allServices) {
 
-        console.log(
-            "SERVICE:",
-            s.uuid
-        );
+      console.log(
+        "SERVICE:",
+        s.uuid
+      );
 
-        const chars =
-            await s.getCharacteristics();
+      const chars =
+        await s.getCharacteristics();
 
-        for (const c of chars) {
-
-            console.log(
-            "CHAR:",
-            c.uuid,
-            {
-                write: c.properties.write,
-                writeWithoutResponse:
-                c.properties.writeWithoutResponse,
-                notify:
-                c.properties.notify
-            }
-            );
-        }
-        }
-
-        const service =
-        await server.getPrimaryService(
-            "49535343-fe7d-4ae5-8fa9-9fafd205e455"
-        );
-
-        const writeChar =
-        await service.getCharacteristic(
-            "49535343-8841-43f4-a8d4-ecbe34729bb3"
-        );
+      for (const c of chars) {
 
         console.log(
-        "USING:",
-        writeChar.uuid
+          "CHAR:",
+          c.uuid,
+          {
+            write: c.properties.write,
+            writeWithoutResponse:
+              c.properties.writeWithoutResponse,
+            notify:
+              c.properties.notify
+          }
         );
-
-        logStatus(
-        "Sending printer test..."
-        );
-
-        await writeChar.writeValueWithoutResponse(
-        new Uint8Array([0x1B, 0x40])
-        );
-
-        await new Promise(r => setTimeout(r, 500));
-
-        logStatus("Generating image...");
-
-        const rasterPayload =
-        buildYHKLineByLinePayload();
-
-        console.log(
-        "Payload bytes:",
-        rasterPayload.length
-        );
-
-        await sendDataInChunks(
-        writeChar,
-        rasterPayload
-        );
-
-        await sendDataInChunks(
-        writeChar,
-        new Uint8Array([
-            0x1B,
-            0x64,
-            0x08
-        ])
-        );
-
-        logStatus("Print completed.");
-
-
-    } catch (err) {
-
-        console.error(err);
-
-        logStatus(
-        "Print Error: " +
-        err.message
-        );
+      }
     }
-    }
+
+    const service =
+      await server.getPrimaryService(
+        "49535343-fe7d-4ae5-8fa9-9fafd205e455"
+      );
+
+    const writeChar =
+      await service.getCharacteristic(
+        "49535343-8841-43f4-a8d4-ecbe34729bb3"
+      );
+
+    console.log(
+      "USING:",
+      writeChar.uuid
+    );
+
+    logStatus(
+      "Sending printer test..."
+    );
+
+    await writeChar.writeValueWithoutResponse(
+      new Uint8Array([
+        0x1B,
+        0x40
+      ])
+    );
+
+    await new Promise(
+      r => setTimeout(r, 500)
+    );
+
+    await writeChar.writeValueWithoutResponse(
+      new Uint8Array([
+        0x0A,
+        0x0A,
+        0x0A
+      ])
+    );
+
+    logStatus(
+      "Test commands sent."
+    );
+
+    return;
+
+  } catch (err) {
+
+    console.error(err);
+
+    logStatus(
+      "Print Error: " +
+      err.message
+    );
+  }
+}
     async function sendDataInChunks(
     characteristic,
     dataArray
