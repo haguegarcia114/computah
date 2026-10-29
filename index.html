@@ -601,29 +601,37 @@
         );
 
         await writeChar.writeValueWithoutResponse(
+        new Uint8Array([0x1B, 0x40])
+        );
+
+        await new Promise(r => setTimeout(r, 500));
+
+        logStatus("Generating image...");
+
+        const rasterPayload =
+        buildYHKLineByLinePayload();
+
+        console.log(
+        "Payload bytes:",
+        rasterPayload.length
+        );
+
+        await sendDataInChunks(
+        writeChar,
+        rasterPayload
+        );
+
+        await sendDataInChunks(
+        writeChar,
         new Uint8Array([
             0x1B,
-            0x40
+            0x64,
+            0x08
         ])
         );
 
-        await new Promise(
-        r => setTimeout(r, 500)
-        );
+        logStatus("Print completed.");
 
-        await writeChar.writeValueWithoutResponse(
-        new Uint8Array([
-            0x0A,
-            0x0A,
-            0x0A
-        ])
-        );
-
-        logStatus(
-        "Test commands sent."
-        );
-
-        return;
 
     } catch (err) {
 
