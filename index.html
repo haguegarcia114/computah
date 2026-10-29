@@ -504,98 +504,121 @@
     
 // --- YHK-0F49 Web Bluetooth Driver Fix ---
 // --- Universal Auto-Discovery Web Bluetooth Driver ---
+    // Global reference to store the active printer device
+    let savedPrinterDevice = null;
+
     async function connectAndPrint() {
     try {
-        logStatus("Scanning for Bluetooth devices...");
+        logStatus("Checking for connected printer...");
 
-        // 1. Request device allowing all optional services
-        const device = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: [
-            '000018f0-0000-1000-8000-00805f9b34fb',
-            '495353c2-fe7d-4ae5-8fa9-9fafd205e455',
-            '0000ff00-0000-1000-8000-00805f9b34fb',
-            '0000ae01-0000-1000-8000-00805f9b34fb',
-            '0000af00-0000-1000-8000-00805f9b34fb',
-            'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
-            '0000180a-0000-1000-8000-00805f9b34fb',
-            '0000fef5-0000-1000-8000-00805f9b34fb'
-        ]
-        });
+        let device = savedPrinterDevice;
 
-        logStatus("Connecting GATT server...");
-        const server = await device.gatt.connect();
-
-        logStatus("Discovering printer services...");
-        const services = await server.getPrimaryServices();
-
-        if (services.length === 0) {
-        throw new Error("No GATT services found. Power-cycle the printer.");
+        // 1. Try to fetch previously granted/paired Bluetooth devices without showing the picker
+        if (!device && navigator.bluetooth.getDevices) {
+        const existingDevices = await navigator.bluetooth.getDevices();
+        if (existingDevices.length > 0) {
+            device = existingDevices[0]; // Grab the previously paired YHK device
+            logStatus("Found remembered printer: " + (device.name || "YHK Printer"));
+        }
         }
 
+        // 2. If no remembered device exists, open the native browser picker ONCE
+        if (!device) {
+        logStatus("Opening Bluetooth picker (One-time setup)...");
+        const targetServices = [
+            '495353c2-fe7d-4ae5-8fa9-9fafd205e455',
+            '0000e004-0000-1000-8000-00805f9b34fb',
+            '000018f0-0000-1000-8000-00805f9b34fb'
+        ];
+
+        device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: targetServices
+        });
+        }
+
+        // Cache the device instance in memory
+        savedPrinterDevice = device;
+
+        // Listen for unexpected disconnections
+        device.addEventListener('gattserverdisconnected', onPrinterDisconnected);
+
+        // 3. Auto-reconnect to GATT if disconnected
+        if (!device.gatt.connected) {
+        logStatus("Connecting to " + (device.name || "Printer") + "...");
+        await device.gatt.connect();
+        await new Promise(r => setTimeout(r, 300)); // Pacing delay for stability
+        }
+
+        logStatus("Printer connected! Finding write channel...");
+
+        // 4. Locate GATT Write Characteristic
+        const server = device.gatt;
         let writeChar = null;
 
-        // 2. Iterate through ALL services to find ANY writable characteristic
-        for (const service of services) {
+        const knownServices = [
+        '495353c2-fe7d-4ae5-8fa9-9fafd205e455',
+        '0000e004-0000-1000-8000-00805f9b34fb',
+        '000018f0-0000-1000-8000-00805f9b34fb'
+        ];
+
+        for (const serviceUuid of knownServices) {
         try {
-            const characteristics = await service.getCharacteristics();
-            for (const char of characteristics) {
-            const props = char.properties;
-            if (props.write || props.writeWithoutResponse) {
-                writeChar = char;
-                logStatus(`Claimed Write Channel! (${service.uuid.substring(0,8)}...)`);
+            const service = await server.getPrimaryService(serviceUuid);
+            const chars = await service.getCharacteristics();
+            for (const c of chars) {
+            if (c.properties.write || c.properties.writeWithoutResponse) {
+                writeChar = c;
                 break;
             }
             }
-        } catch (err) {
-            // Skip restricted system services
+        } catch (e) {
             continue;
         }
         if (writeChar) break;
         }
 
         if (!writeChar) {
-        throw new Error("Device found, but no writable GATT characteristic exists.");
+        throw new Error("Could not claim writable channel. Power-cycle printer.");
         }
 
-        logStatus("Sending init header...");
-        const initCmd = new Uint8Array([0x1B, 0x40, 0x1D, 0x45, 0x0A, 0x1D, 0x81, 0xF8]);
-        
-        if (writeChar.properties.writeWithoutResponse) {
-        await writeChar.writeValueWithoutResponse(initCmd);
-        } else {
-        await writeChar.writeValue(initCmd);
-        }
+        // 5. Send Payload Directly
+        logStatus("Sending print job...");
+        const initCmd = new Uint8Array([0x1B, 0x40, 0x1D, 0x49, 0xF0, 0xFF]);
+        await sendChunk(writeChar, initCmd);
 
-        logStatus("Printing strip...");
         const payload = buildYHKRasterPayload();
-
         const CHUNK_SIZE = 20;
         for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
         const chunk = payload.slice(i, i + CHUNK_SIZE);
-        if (writeChar.properties.writeWithoutResponse) {
-            await writeChar.writeValueWithoutResponse(chunk);
-        } else {
-            await writeChar.writeValue(chunk);
-        }
-        await new Promise(r => setTimeout(r, 8)); // 8ms pacing
+        await sendChunk(writeChar, chunk);
+        await new Promise(r => setTimeout(r, 8));
         }
 
-        // Feed paper
-        const feedCmd = new Uint8Array([0x1B, 0x64, 0x04, 0x10, 0xFF, 0xFE]);
-        if (writeChar.properties.writeWithoutResponse) {
-        await writeChar.writeValueWithoutResponse(feedCmd);
-        } else {
-        await writeChar.writeValue(feedCmd);
-        }
+        const feedCmd = new Uint8Array([0x1B, 0x64, 0x04]);
+        await sendChunk(writeChar, feedCmd);
 
         logStatus("Print Job Finished!");
+
     } catch (err) {
         logStatus("Print Error: " + err.message);
+        // Reset device pointer if connection failed completely
+        savedPrinterDevice = null;
         console.error(err);
     }
     }
 
+    function onPrinterDisconnected(event) {
+    logStatus("Printer disconnected. Will auto-reconnect on next print tap.");
+    }
+
+    async function sendChunk(char, data) {
+    if (char.properties.writeWithoutResponse) {
+        await char.writeValueWithoutResponse(data);
+    } else {
+        await char.writeValue(data);
+    }
+    }
     async function setupWebcam() {
     const video = document.getElementById('hiddenVideo');
     
