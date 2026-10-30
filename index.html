@@ -354,7 +354,7 @@
 
     const FOOTER_HEIGHT = 100;
     const CANVAS_WIDTH = 384;
-    const PHOTO_BOX_HEIGHT = 220;
+    const PHOTO_BOX_HEIGHT = 180;
 
     async function init() {
       await setupWebcam();
@@ -608,22 +608,6 @@
 
         logStatus("Generating image...");
 
-        
-        ctx.fillStyle = "white";
-        ctx.fillRect(
-          0,
-          0,
-          canvas.width,
-          canvas.height
-        );
-
-        ctx.fillStyle = "black";
-        ctx.fillRect(
-          100,
-          100,
-          100,
-          100
-        );
 
         const rasterPayload =
         buildYHKLineByLinePayload();
