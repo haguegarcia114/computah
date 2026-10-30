@@ -562,12 +562,22 @@
         logStatus("Printing photo strip...");
 
         ctx.fillStyle = "white";
-        ctx.fillRect(0,0,384,320);
+        ctx.fillRect(
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
 
         ctx.fillStyle = "black";
         ctx.fillRect(100,100,100,100);
 
         const rasterPayload = buildCanvasPhotoPayload();
+        console.log(
+          "Payload:",
+          rasterPayload.length,
+          rasterPayload.slice(0, 40)
+        );
         await sendDataInChunks(writeChar, rasterPayload);
 
         // 3. Feed Paper Motor
@@ -641,7 +651,7 @@
         const brightness =
           (r + g + b) / 3;
 
-        if (brightness > 128) {
+        if (brightness < 128) {
           byteVal |= (0x80 >> bit);
         }
       }
