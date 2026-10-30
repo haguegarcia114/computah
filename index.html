@@ -551,7 +551,11 @@
 
         // 1. Initialize Hardware + High Heat Power Setting
         logStatus("Waking print head...");
-        const initCmd = new Uint8Array([0x1B, 0x40, 0x1D, 0x49, 0xF0, 0xFF]);
+        const initCmd = new Uint8Array([
+          0x1B, 0x40,             // ESC @ Reset hardware
+          0x1B, 0x37, 0x07, 0xFF, 0x02, // Set heating time parameters (Max heat duration)
+          0x1D, 0x49, 0xF0, 0xFF  // Set heating energy density to maximum
+        ]);
         await writeChar.writeValueWithoutResponse(initCmd);
         await new Promise(r => setTimeout(r, 200));
 
