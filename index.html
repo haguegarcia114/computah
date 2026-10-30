@@ -158,6 +158,16 @@
       margin-bottom: 4px;
     }
 
+    .checkbox-label {
+      font-size: 11px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
     button {
       background: var(--win-bg);
       border: 2px solid;
@@ -283,6 +293,16 @@
             <option value="3" selected>3 Photos Stacked</option>
             <option value="4">4 Photos Stacked</option>
           </select>
+
+          <!-- Toggle Animation Control -->
+          <label class="checkbox-label">
+            <input type="checkbox" id="toggleAnim" onchange="toggleAnimation(this)"> Freeze Preview
+          </label>
+
+          <!-- Toggle Pixel Dithering Control -->
+          <label class="checkbox-label">
+            <input type="checkbox" id="toggleDither" checked onchange="toggleDithering(this)"> Pixel Dithering
+          </label>
         </div>
 
         <div class="panel-section">
@@ -332,6 +352,8 @@
     let totalPhotos = 3;
     let capturedImages = [];
     let liveAnimationId = null;
+    let isAnimationOff = false;
+    let isDitheringEnabled = true;
 
     const FOOTER_HEIGHT = 100;
     const CANVAS_WIDTH = 384;
@@ -362,18 +384,46 @@
       }
     }
 
+    function toggleAnimation(checkbox) {
+      isAnimationOff = checkbox.checked;
+      if (isAnimationOff) {
+        if (liveAnimationId) cancelAnimationFrame(liveAnimationId);
+        renderSingleFrame();
+        logStatus("Live animation frozen.");
+      } else {
+        startLiveRenderLoop();
+        logStatus("Live animation resumed.");
+      }
+    }
+
+    function toggleDithering(checkbox) {
+      isDitheringEnabled = checkbox.checked;
+      if (isAnimationOff) {
+        renderSingleFrame();
+      }
+      logStatus(`Dithering ${isDitheringEnabled ? 'enabled' : 'disabled'}.`);
+    }
+
     function changeLayout() {
       totalPhotos = parseInt(document.getElementById('photoCountSelect').value);
       capturedImages = [];
       canvas.height = (totalPhotos * PHOTO_BOX_HEIGHT) + FOOTER_HEIGHT;
       generateQRCode();
-      startLiveRenderLoop();
+      if (!isAnimationOff) {
+        startLiveRenderLoop();
+      } else {
+        renderSingleFrame();
+      }
       logStatus(`Layout set to ${totalPhotos} photos.`);
     }
 
     function resetPhotos() {
       capturedImages = [];
-      startLiveRenderLoop();
+      if (!isAnimationOff) {
+        startLiveRenderLoop();
+      } else {
+        renderSingleFrame();
+      }
       logStatus("Canvas reset.");
     }
 
@@ -412,39 +462,46 @@
       targetCtx.putImageData(imgData, x, y);
     }
 
+    function renderSingleFrame() {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const currentSlot = capturedImages.length;
+
+      for (let i = 0; i < totalPhotos; i++) {
+        const yPos = i * PHOTO_BOX_HEIGHT;
+
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(10, yPos + 10, CANVAS_WIDTH - 20, PHOTO_BOX_HEIGHT - 20);
+
+        if (i < currentSlot) {
+          ctx.drawImage(capturedImages[i], 12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
+        } else if (i === currentSlot && video.readyState === 4) {
+          ctx.save();
+          ctx.translate(CANVAS_WIDTH - 12, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(video, 0, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
+          ctx.restore();
+
+          if (isDitheringEnabled) {
+            applyDitheringToCtx(ctx, 12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
+          }
+        } else {
+          ctx.fillStyle = '#F0F0F0';
+          ctx.fillRect(12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
+        }
+      }
+
+      renderFooter();
+    }
+
     function startLiveRenderLoop() {
       if (liveAnimationId) cancelAnimationFrame(liveAnimationId);
 
       function render() {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        const currentSlot = capturedImages.length;
-
-        for (let i = 0; i < totalPhotos; i++) {
-          const yPos = i * PHOTO_BOX_HEIGHT;
-
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(10, yPos + 10, CANVAS_WIDTH - 20, PHOTO_BOX_HEIGHT - 20);
-
-          if (i < currentSlot) {
-            ctx.drawImage(capturedImages[i], 12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
-          } else if (i === currentSlot && video.readyState === 4) {
-            ctx.save();
-            ctx.translate(CANVAS_WIDTH - 12, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(video, 0, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
-            ctx.restore();
-
-            applyDitheringToCtx(ctx, 12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
-          } else {
-            ctx.fillStyle = '#F0F0F0';
-            ctx.fillRect(12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
-          }
-        }
-
-        renderFooter();
+        if (isAnimationOff) return;
+        renderSingleFrame();
         liveAnimationId = requestAnimationFrame(render);
       }
 
@@ -489,13 +546,16 @@
       tempCtx.scale(-1, 1);
       tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
 
-      applyDitheringToCtx(tempCtx, 0, 0, tempCanvas.width, tempCanvas.height);
+      if (isDitheringEnabled) {
+        applyDitheringToCtx(tempCtx, 0, 0, tempCanvas.width, tempCanvas.height);
+      }
 
       const img = new Image();
       img.src = tempCanvas.toDataURL('image/png');
       img.onload = () => {
         capturedImages.push(img);
         logStatus(`Snapped photo ${capturedImages.length} of ${totalPhotos}.`);
+        if (isAnimationOff) renderSingleFrame();
       };
     }
 
@@ -508,69 +568,64 @@
 
     // --- WORKING YHK PHOTO STRIP DRIVER ---
     async function connectAndPrint() {
-  try {
-    logStatus("Scanning for YHK Printer...");
+      try {
+        logStatus("Scanning for YHK Printer...");
 
-    const SERVICE = "49535343-fe7d-4ae5-8fa9-9fafd205e455";
-    const TX = "49535343-8841-43f4-a8d4-ecbe34729bb3";
-    const RX = "49535343-1e4d-4bd9-ba61-23c647249616";
+        const SERVICE = "49535343-fe7d-4ae5-8fa9-9fafd205e455";
+        const TX = "49535343-8841-43f4-a8d4-ecbe34729bb3";
+        const RX = "49535343-1e4d-4bd9-ba61-23c647249616";
 
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: "YHK" }],
-      optionalServices: [SERVICE]
-    });
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ namePrefix: "YHK" }],
+          optionalServices: [SERVICE]
+        });
 
-    logStatus("Connecting...");
-    const server = await device.gatt.connect();
-    const service = await server.getPrimaryService(SERVICE);
-    const writeChar = await service.getCharacteristic(TX);
+        logStatus("Connecting...");
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE);
+        const writeChar = await service.getCharacteristic(TX);
 
-    // Josh enables RX notifications before printing
-    try {
-      const rx = await service.getCharacteristic(RX);
-      await rx.startNotifications();
-    } catch (e) {}
+        try {
+          const rx = await service.getCharacteristic(RX);
+          await rx.startNotifications();
+        } catch (e) {}
 
-    // Build ONE job, exactly like his buildPrintJob():
-    // ESC @ + raster + ESC d 4 + 3x LF
-    const raster = buildCanvasPhotoPayload();
-    const job = new Uint8Array(2 + raster.length + 3 + 3);
-    job.set([0x1B, 0x40], 0);
-    job.set(raster, 2);
-    job.set([0x1B, 0x64, 0x04], 2 + raster.length);
-    job.set([0x0A, 0x0A, 0x0A], 2 + raster.length + 3);
+        const raster = buildCanvasPhotoPayload();
+        const job = new Uint8Array(2 + raster.length + 3 + 3);
+        job.set([0x1B, 0x40], 0);
+        job.set(raster, 2);
+        job.set([0x1B, 0x64, 0x04], 2 + raster.length);
+        job.set([0x0A, 0x0A, 0x0A], 2 + raster.length + 3);
 
-    logStatus("Printing...");
-    await sendDataInChunks(writeChar, job);
+        logStatus("Printing...");
+        await sendDataInChunks(writeChar, job);
 
-    logStatus("Print completed!");
-  } catch (err) {
-    console.error(err);
-    logStatus("Print Error: " + err.message);
-  }
-}
-
-    
-async function sendDataInChunks(characteristic, data) {
-  const CHUNK_SIZE = 182;
-  const DELAY_MS = 40;
-  const FLUSH_MS = 1500;
-
-  for (let i = 0; i < data.length; i += CHUNK_SIZE) {
-    await characteristic.writeValueWithoutResponse(data.slice(i, i + CHUNK_SIZE));
-    if (i + CHUNK_SIZE < data.length) {
-      await new Promise(r => setTimeout(r, DELAY_MS));
+        logStatus("Print completed!");
+      } catch (err) {
+        console.error(err);
+        logStatus("Print Error: " + err.message);
+      }
     }
-  }
-  await new Promise(r => setTimeout(r, FLUSH_MS));
-}
 
-    // Convert Canvas element directly into ESC/POS GS v 0 1-bit monochrome raster
+    async function sendDataInChunks(characteristic, data) {
+      const CHUNK_SIZE = 182;
+      const DELAY_MS = 40;
+      const FLUSH_MS = 1500;
+
+      for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+        await characteristic.writeValueWithoutResponse(data.slice(i, i + CHUNK_SIZE));
+        if (i + CHUNK_SIZE < data.length) {
+          await new Promise(r => setTimeout(r, DELAY_MS));
+        }
+      }
+      await new Promise(r => setTimeout(r, FLUSH_MS));
+    }
+
     function buildCanvasPhotoPayload() {
       let blackPixels = 0;
       const width = canvas.width;   // 384 px
       const height = canvas.height; 
-      const widthBytes = Math.ceil(width / 8); // 48 bytes per row
+      const widthBytes = Math.ceil(width / 8);
 
       const imageData = ctx.getImageData(0, 0, width, height).data;
       const bitmap = new Uint8Array(widthBytes * height);
@@ -590,17 +645,15 @@ async function sendDataInChunks(characteristic, data) {
             const b = imageData[idx + 2];
             const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
 
-            // Thermal pin burns black when brightness is dark (< 128)
             if (brightness < 128) {
               blackPixels++;
-              byteVal |= (0x80 >> bit); // MSB bit ordering required for ESC/POS
+              byteVal |= (0x80 >> bit);
             }
           }
           bitmap[byteIndex++] = byteVal;
         }
       }
 
-      // ESC/POS GS v 0 Command Header
       const header = new Uint8Array([
         0x1D, 0x76, 0x30, 0x00,
         widthBytes & 0xFF, (widthBytes >> 8) & 0xFF,
