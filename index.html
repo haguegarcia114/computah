@@ -573,9 +573,17 @@
         ctx.fillRect(100,100,100,100);
 
         const rasterPayload = buildCanvasPhotoPayload();
+      
         console.log(
           "Payload bytes:",
           rasterPayload.length
+        );
+
+        console.log(
+          "First 32 bytes:",
+          Array.from(
+            rasterPayload.slice(0, 32)
+          )
         );
         await sendDataInChunks(writeChar, rasterPayload);
 
@@ -606,91 +614,98 @@
     // Formats each horizontal line with a direct GS v 0 header for YHK/WalkPrint boards
     
     function buildCanvasPhotoPayload() {
+      let blackPixels = 0;
+      const width = canvas.width;
+      const height = canvas.height;
 
-  const width = canvas.width;
-  const height = canvas.height;
+      const widthBytes =
+        Math.ceil(width / 8);
 
-  const widthBytes =
-    Math.ceil(width / 8);
+      const imageData =
+        ctx.getImageData(
+          0,
+          0,
+          width,
+          height
+        ).data;
 
-  const imageData =
-    ctx.getImageData(
-      0,
-      0,
-      width,
-      height
-    ).data;
+      const bitmap =
+        new Uint8Array(
+          widthBytes * height
+        );
 
-  const bitmap =
-    new Uint8Array(
-      widthBytes * height
-    );
+      let byteIndex = 0;
 
-  let byteIndex = 0;
+      for (let y = 0; y < height; y++) {
 
-  for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x += 8) {
 
-    for (let x = 0; x < width; x += 8) {
+          let byteVal = 0;
 
-      let byteVal = 0;
+          for (let bit = 0; bit < 8; bit++) {
 
-      for (let bit = 0; bit < 8; bit++) {
+            const px = x + bit;
 
-        const px = x + bit;
+            if (px >= width) continue;
 
-        if (px >= width) continue;
+            const idx =
+              (y * width + px) * 4;
 
-        const idx =
-          (y * width + px) * 4;
+            const r = imageData[idx];
+            const g = imageData[idx + 1];
+            const b = imageData[idx + 2];
 
-        const r = imageData[idx];
-        const g = imageData[idx + 1];
-        const b = imageData[idx + 2];
+            const brightness =
+              (r + g + b) / 3;
 
-        const brightness =
-          (r + g + b) / 3;
+            if (brightness < 128) {
 
-        if (brightness < 128) {
-          byteVal |= (0x80 >> bit);
+                blackPixels++;
+
+                byteVal |= (0x80 >> bit);
+            }
+          }
+
+          bitmap[byteIndex++] =
+            byteVal;
         }
       }
 
-      bitmap[byteIndex++] =
-        byteVal;
-    }
-  }
+      const header =
+        new Uint8Array([
+          0x1D,
+          0x76,
+          0x30,
+          0x00,
 
-  const header =
-    new Uint8Array([
-      0x1D,
-      0x76,
-      0x30,
-      0x00,
+          widthBytes & 0xFF,
+          (widthBytes >> 8) & 0xFF,
 
-      widthBytes & 0xFF,
-      (widthBytes >> 8) & 0xFF,
+          height & 0xFF,
+          (height >> 8) & 0xFF
+        ]);
 
-      height & 0xFF,
-      (height >> 8) & 0xFF
-    ]);
+      const payload =
+        new Uint8Array(
+          header.length +
+          bitmap.length
+        );
 
-  const payload =
-    new Uint8Array(
-      header.length +
-      bitmap.length
-    );
+      payload.set(
+        header,
+        0
+      );
 
-  payload.set(
-    header,
-    0
-  );
+      payload.set(
+        bitmap,
+        header.length
+      );
 
-  payload.set(
-    bitmap,
-    header.length
-  );
-
-  return payload;
+      console.log(
+        "Black pixels:",
+        blackPixels
+      );
+      return payload;
 }
 
     function logStatus(msg) {
