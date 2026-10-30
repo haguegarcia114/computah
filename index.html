@@ -34,7 +34,6 @@
       padding: 6px;
     }
 
-    /* Main Window Shell */
     .window {
       background: var(--win-bg);
       border: 2px solid;
@@ -46,7 +45,6 @@
       padding: 2px;
     }
 
-    /* Title Bar */
     .title-bar {
       background: var(--navy);
       color: white;
@@ -72,7 +70,6 @@
       margin-left: 2px;
     }
 
-    /* Menu Bar */
     .menu-bar {
       display: flex;
       gap: 12px;
@@ -81,7 +78,6 @@
       border-bottom: 1px solid var(--win-border-dark);
     }
 
-    /* Main Layout Area */
     .main-body {
       display: flex;
       flex: 1;
@@ -90,7 +86,6 @@
       overflow: hidden;
     }
 
-    /* Classic 2-Column Square Icon Tool Sidebar */
     .tools-sidebar {
       width: 56px;
       background: var(--win-bg);
@@ -110,10 +105,9 @@
       justify-content: center;
       align-items: center;
       font-size: 12px;
-      pointer-events: none; /* Decorative only */
+      pointer-events: none;
     }
 
-    /* Center Canvas Viewport */
     .viewport {
       flex: 1;
       background: #808080;
@@ -129,12 +123,11 @@
       background: #ffffff;
       border: 1px solid #000;
       box-shadow: 3px 3px 6px rgba(0,0,0,0.4);
-      width: 384px; /* 3-inch printing width standard */
+      width: 384px;
       height: auto;
-      image-rendering: pixelated; /* Sharp dither dots */
+      image-rendering: pixelated;
     }
 
-    /* Hidden Camera & QR Elements */
     #hiddenVideo {
       display: none;
     }
@@ -143,7 +136,6 @@
       display: none;
     }
 
-    /* Right Controls Panel */
     .control-panel {
       width: 200px;
       background: var(--win-bg);
@@ -164,6 +156,16 @@
       font-size: 11px;
       font-weight: bold;
       margin-bottom: 4px;
+    }
+
+    .checkbox-label {
+      font-size: 11px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      margin-top: 4px;
     }
 
     button {
@@ -203,7 +205,6 @@
       overflow-y: auto;
     }
 
-    /* Bottom Color Palette Bar */
     .color-bar {
       height: 32px;
       background: var(--win-bg);
@@ -238,7 +239,6 @@
 <body>
 
   <div class="window">
-    <!-- Title Bar -->
     <div class="title-bar">
       <span>untitled - Paint</span>
       <div class="title-controls">
@@ -248,7 +248,6 @@
       </div>
     </div>
 
-    <!-- Menu Bar -->
     <div class="menu-bar">
       <span>File</span>
       <span>Edit</span>
@@ -258,10 +257,7 @@
       <span>Help</span>
     </div>
 
-    <!-- Main Body Area -->
     <div class="main-body">
-      
-      <!-- Classic 2-Column Square Tools -->
       <div class="tools-sidebar">
         <div class="tool-box">✂️</div>
         <div class="tool-box">✂️</div>
@@ -281,16 +277,13 @@
         <div class="tool-box">▢</div>
       </div>
 
-      <!-- Main Interactive Canvas -->
       <div class="viewport">
         <canvas id="photoCanvas" width="384" height="600"></canvas>
       </div>
 
-      <!-- Hidden Video Stream & QR Container -->
       <video id="hiddenVideo" autoplay playsinline muted style="display:none;"></video>
       <div id="qrcode"></div>
 
-      <!-- Right Photobooth Controls -->
       <div class="control-panel">
         <div class="panel-section">
           <div class="panel-title">1. Photo Layout</div>
@@ -300,6 +293,16 @@
             <option value="3" selected>3 Photos Stacked</option>
             <option value="4">4 Photos Stacked</option>
           </select>
+
+          <!-- Toggle Animation Control -->
+          <label class="checkbox-label">
+            <input type="checkbox" id="toggleAnim" onchange="toggleAnimation(this)"> Freeze Preview
+          </label>
+
+          <!-- Toggle Pixel Dithering Control -->
+          <label class="checkbox-label">
+            <input type="checkbox" id="toggleDither" checked onchange="toggleDithering(this)"> Pixel Dithering
+          </label>
         </div>
 
         <div class="panel-section">
@@ -315,10 +318,8 @@
 
         <div class="status-text" id="statusBox">Status: Select layout and snap photos.</div>
       </div>
-
     </div>
 
-    <!-- Bottom Palette Bar -->
     <div class="color-bar">
       <div class="active-color-box"></div>
       <div class="swatches">
@@ -342,7 +343,7 @@
     </div>
   </div>
 
-<script>
+  <script>
     const canvas = document.getElementById('photoCanvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const video = document.getElementById('hiddenVideo');
@@ -351,10 +352,12 @@
     let totalPhotos = 3;
     let capturedImages = [];
     let liveAnimationId = null;
+    let isAnimationOff = false;
+    let isDitheringEnabled = true;
 
     const FOOTER_HEIGHT = 100;
     const CANVAS_WIDTH = 384;
-    const PHOTO_BOX_HEIGHT = 220;
+    const PHOTO_BOX_HEIGHT = 180;
 
     async function init() {
       await setupWebcam();
@@ -381,18 +384,46 @@
       }
     }
 
+    function toggleAnimation(checkbox) {
+      isAnimationOff = checkbox.checked;
+      if (isAnimationOff) {
+        if (liveAnimationId) cancelAnimationFrame(liveAnimationId);
+        renderSingleFrame();
+        logStatus("Live animation frozen.");
+      } else {
+        startLiveRenderLoop();
+        logStatus("Live animation resumed.");
+      }
+    }
+
+    function toggleDithering(checkbox) {
+      isDitheringEnabled = checkbox.checked;
+      if (isAnimationOff) {
+        renderSingleFrame();
+      }
+      logStatus(`Dithering ${isDitheringEnabled ? 'enabled' : 'disabled'}.`);
+    }
+
     function changeLayout() {
       totalPhotos = parseInt(document.getElementById('photoCountSelect').value);
       capturedImages = [];
       canvas.height = (totalPhotos * PHOTO_BOX_HEIGHT) + FOOTER_HEIGHT;
       generateQRCode();
-      startLiveRenderLoop();
+      if (!isAnimationOff) {
+        startLiveRenderLoop();
+      } else {
+        renderSingleFrame();
+      }
       logStatus(`Layout set to ${totalPhotos} photos.`);
     }
 
     function resetPhotos() {
       capturedImages = [];
-      startLiveRenderLoop();
+      if (!isAnimationOff) {
+        startLiveRenderLoop();
+      } else {
+        renderSingleFrame();
+      }
       logStatus("Canvas reset.");
     }
 
@@ -431,39 +462,46 @@
       targetCtx.putImageData(imgData, x, y);
     }
 
+    function renderSingleFrame() {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const currentSlot = capturedImages.length;
+
+      for (let i = 0; i < totalPhotos; i++) {
+        const yPos = i * PHOTO_BOX_HEIGHT;
+
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(10, yPos + 10, CANVAS_WIDTH - 20, PHOTO_BOX_HEIGHT - 20);
+
+        if (i < currentSlot) {
+          ctx.drawImage(capturedImages[i], 12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
+        } else if (i === currentSlot && video.readyState === 4) {
+          ctx.save();
+          ctx.translate(CANVAS_WIDTH - 12, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(video, 0, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
+          ctx.restore();
+
+          if (isDitheringEnabled) {
+            applyDitheringToCtx(ctx, 12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
+          }
+        } else {
+          ctx.fillStyle = '#F0F0F0';
+          ctx.fillRect(12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
+        }
+      }
+
+      renderFooter();
+    }
+
     function startLiveRenderLoop() {
       if (liveAnimationId) cancelAnimationFrame(liveAnimationId);
 
       function render() {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        const currentSlot = capturedImages.length;
-
-        for (let i = 0; i < totalPhotos; i++) {
-          const yPos = i * PHOTO_BOX_HEIGHT;
-
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(10, yPos + 10, CANVAS_WIDTH - 20, PHOTO_BOX_HEIGHT - 20);
-
-          if (i < currentSlot) {
-            ctx.drawImage(capturedImages[i], 12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
-          } else if (i === currentSlot && video.readyState === 4) {
-            ctx.save();
-            ctx.translate(CANVAS_WIDTH - 12, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(video, 0, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
-            ctx.restore();
-
-            applyDitheringToCtx(ctx, 12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
-          } else {
-            ctx.fillStyle = '#F0F0F0';
-            ctx.fillRect(12, yPos + 12, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 24);
-          }
-        }
-
-        renderFooter();
+        if (isAnimationOff) return;
+        renderSingleFrame();
         liveAnimationId = requestAnimationFrame(render);
       }
 
@@ -508,13 +546,16 @@
       tempCtx.scale(-1, 1);
       tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
 
-      applyDitheringToCtx(tempCtx, 0, 0, tempCanvas.width, tempCanvas.height);
+      if (isDitheringEnabled) {
+        applyDitheringToCtx(tempCtx, 0, 0, tempCanvas.width, tempCanvas.height);
+      }
 
       const img = new Image();
       img.src = tempCanvas.toDataURL('image/png');
       img.onload = () => {
         capturedImages.push(img);
         logStatus(`Snapped photo ${capturedImages.length} of ${totalPhotos}.`);
+        if (isAnimationOff) renderSingleFrame();
       };
     }
 
@@ -525,244 +566,107 @@
       new QRCode(qrBox, { text: dummyURL, width: 80, height: 80 });
     }
 
-async function connectAndPrint() {
-  try {
+    // --- WORKING YHK PHOTO STRIP DRIVER ---
+    async function connectAndPrint() {
+      try {
+        logStatus("Scanning for YHK Printer...");
 
-    logStatus("Scanning for YHK Printer...");
+        const SERVICE = "49535343-fe7d-4ae5-8fa9-9fafd205e455";
+        const TX = "49535343-8841-43f4-a8d4-ecbe34729bb3";
+        const RX = "49535343-1e4d-4bd9-ba61-23c647249616";
 
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [
-        { namePrefix: "YHK" },
-        { namePrefix: "Walk" },
-        { namePrefix: "MX" },
-        { namePrefix: "GB" }
-      ],
-      optionalServices: [
-        "49535343-fe7d-4ae5-8fa9-9fafd205e455"
-      ]
-    });
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ namePrefix: "YHK" }],
+          optionalServices: [SERVICE]
+        });
 
-    logStatus("Connecting...");
+        logStatus("Connecting...");
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE);
+        const writeChar = await service.getCharacteristic(TX);
 
-    const server = await device.gatt.connect();
+        try {
+          const rx = await service.getCharacteristic(RX);
+          await rx.startNotifications();
+        } catch (e) {}
 
-    await new Promise(
-      r => setTimeout(r, 500)
-    );
+        const raster = buildCanvasPhotoPayload();
+        const job = new Uint8Array(2 + raster.length + 3 + 3);
+        job.set([0x1B, 0x40], 0);
+        job.set(raster, 2);
+        job.set([0x1B, 0x64, 0x04], 2 + raster.length);
+        job.set([0x0A, 0x0A, 0x0A], 2 + raster.length + 3);
 
-    const allServices =
-      await server.getPrimaryServices();
+        logStatus("Printing...");
+        await sendDataInChunks(writeChar, job);
 
-    console.log("===== SERVICES =====");
-
-    for (const s of allServices) {
-
-      console.log(
-        "SERVICE:",
-        s.uuid
-      );
-
-      const chars =
-        await s.getCharacteristics();
-
-      for (const c of chars) {
-
-        console.log(
-          "CHAR:",
-          c.uuid,
-          {
-            write: c.properties.write,
-            writeWithoutResponse:
-              c.properties.writeWithoutResponse,
-            notify:
-              c.properties.notify
-          }
-        );
+        logStatus("Print completed!");
+      } catch (err) {
+        console.error(err);
+        logStatus("Print Error: " + err.message);
       }
     }
 
-    const service =
-      await server.getPrimaryService(
-        "49535343-fe7d-4ae5-8fa9-9fafd205e455"
-      );
+    async function sendDataInChunks(characteristic, data) {
+      const CHUNK_SIZE = 182;
+      const DELAY_MS = 40;
+      const FLUSH_MS = 1500;
 
-    const writeChar =
-      await service.getCharacteristic(
-        "49535343-8841-43f4-a8d4-ecbe34729bb3"
-      );
-
-    console.log(
-      "USING:",
-      writeChar.uuid
-    );
-
-    logStatus(
-      "Sending printer test..."
-    );
-
-    await writeChar.writeValueWithoutResponse(
-      new Uint8Array([
-        0x1B,
-        0x40
-      ])
-    );
-
-    await new Promise(
-      r => setTimeout(r, 500)
-    );
-
-    await writeChar.writeValueWithoutResponse(
-      new Uint8Array([
-        0x0A,
-        0x0A,
-        0x0A
-      ])
-    );
-
-    logStatus(
-      "Test commands sent."
-    );
-
-    return;
-
-  } catch (err) {
-
-    console.error(err);
-
-    logStatus(
-      "Print Error: " +
-      err.message
-    );
-  }
-}
-    async function sendDataInChunks(
-    characteristic,
-    dataArray
-    ) {
-
-    const CHUNK_SIZE = 180;
-
-    for (
-        let i = 0;
-        i < dataArray.length;
-        i += CHUNK_SIZE
-    ) {
-
-        const chunk =
-        dataArray.slice(
-            i,
-            i + CHUNK_SIZE
-        );
-
-        await characteristic.writeValueWithoutResponse(
-        chunk
-        );
-
-        await new Promise(
-        resolve => setTimeout(resolve, 20)
-        );
-    }
+      for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+        await characteristic.writeValueWithoutResponse(data.slice(i, i + CHUNK_SIZE));
+        if (i + CHUNK_SIZE < data.length) {
+          await new Promise(r => setTimeout(r, DELAY_MS));
+        }
+      }
+      await new Promise(r => setTimeout(r, FLUSH_MS));
     }
 
-    function buildYHKLineByLinePayload() {
+    function buildCanvasPhotoPayload() {
+      let blackPixels = 0;
+      const width = canvas.width;   // 384 px
+      const height = canvas.height; 
+      const widthBytes = Math.ceil(width / 8);
 
-    const width = canvas.width;
-    const height = canvas.height;
+      const imageData = ctx.getImageData(0, 0, width, height).data;
+      const bitmap = new Uint8Array(widthBytes * height);
 
-    const widthBytes = Math.ceil(width / 8);
+      let byteIndex = 0;
 
-    const imageData =
-        ctx.getImageData(
-        0,
-        0,
-        width,
-        height
-        ).data;
-
-    const bitmap =
-        new Uint8Array(
-        widthBytes * height
-        );
-
-    let byteIndex = 0;
-
-    for (let y = 0; y < height; y++) {
-
-        for (
-        let x = 0;
-        x < width;
-        x += 8
-        ) {
-
-        let byteVal = 0;
-
-        for (
-            let bit = 0;
-            bit < 8;
-            bit++
-        ) {
-
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x += 8) {
+          let byteVal = 0;
+          for (let bit = 0; bit < 8; bit++) {
             const px = x + bit;
+            if (px >= width) continue;
 
-            if (px >= width) {
-            continue;
+            const idx = (y * width + px) * 4;
+            const r = imageData[idx];
+            const g = imageData[idx + 1];
+            const b = imageData[idx + 2];
+            const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+
+            if (brightness < 128) {
+              blackPixels++;
+              byteVal |= (0x80 >> bit);
             }
-
-            const idx =
-            (y * width + px) * 4;
-
-            const r =
-            imageData[idx];
-
-            const g =
-            imageData[idx + 1];
-
-            const b =
-            imageData[idx + 2];
-
-            const gray =
-            (r + g + b) / 3;
-
-            if (gray < 128) {
-            byteVal |=
-                (0x80 >> bit);
-            }
+          }
+          bitmap[byteIndex++] = byteVal;
         }
+      }
 
-        bitmap[byteIndex++] =
-            byteVal;
-        }
+      const header = new Uint8Array([
+        0x1D, 0x76, 0x30, 0x00,
+        widthBytes & 0xFF, (widthBytes >> 8) & 0xFF,
+        height & 0xFF, (height >> 8) & 0xFF
+      ]);
+
+      const payload = new Uint8Array(header.length + bitmap.length);
+      payload.set(header, 0);
+      payload.set(bitmap, header.length);
+
+      console.log("Canvas Raster Encoded - Total Black Pixels:", blackPixels);
+      return payload;
     }
-
-    const header =
-        new Uint8Array([
-        0x1D,
-        0x76,
-        0x30,
-        0x00,
-
-        widthBytes & 0xff,
-        (widthBytes >> 8) & 0xff,
-
-        height & 0xff,
-        (height >> 8) & 0xff
-        ]);
-
-    const payload =
-        new Uint8Array(
-        header.length +
-        bitmap.length
-        );
-
-    payload.set(header, 0);
-    payload.set(
-        bitmap,
-        header.length
-    );
-
-    return payload;
-    }
-
 
     function logStatus(msg) {
       statusBox.innerText = "Status: " + msg;
