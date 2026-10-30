@@ -341,7 +341,8 @@
       </div>
     </div>
   </div>
-<script>
+
+  <script>
     const canvas = document.getElementById('photoCanvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const video = document.getElementById('hiddenVideo');
@@ -524,6 +525,7 @@
       new QRCode(qrBox, { text: dummyURL, width: 80, height: 80 });
     }
 
+    // --- ACTUAL YHK PHOTO PRINTING DRIVER ---
     async function connectAndPrint() {
       try {
         logStatus("Scanning for YHK Printer...");
@@ -542,26 +544,28 @@
 
         logStatus("Connecting GATT server...");
         const server = await device.gatt.connect();
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 400));
 
         const service = await server.getPrimaryService("49535343-fe7d-4ae5-8fa9-9fafd205e455");
         const writeChar = await service.getCharacteristic("49535343-8841-43f4-a8d4-ecbe34729bb3");
 
-        // ESC @ (Initialize) + ESC I (Set High Density / Heating Time)
+        // 1. Initialize Hardware + High Heat Power Setting
         logStatus("Waking print head...");
         const initCmd = new Uint8Array([0x1B, 0x40, 0x1D, 0x49, 0xF0, 0xFF]);
         await writeChar.writeValueWithoutResponse(initCmd);
         await new Promise(r => setTimeout(r, 200));
 
-        logStatus("Streaming photo strip...");
-        const rasterPayload = buildYHKLineByLinePayload();
+        // 2. Stream Canvas Bitmap Payload to YHK Motor
+        logStatus("Printing photo strip...");
+        const rasterPayload = buildCanvasPhotoPayload();
         await sendDataInChunks(writeChar, rasterPayload);
 
+        // 3. Feed Paper Stream
         logStatus("Feeding paper...");
         const feedCmd = new Uint8Array([0x1B, 0x64, 0x08, 0x0A, 0x0A]);
         await sendDataInChunks(writeChar, feedCmd);
 
-        logStatus("Print completed.");
+        logStatus("Print completed!");
 
       } catch (err) {
         console.error(err);
@@ -570,20 +574,20 @@
     }
 
     async function sendDataInChunks(characteristic, dataArray) {
-      // 20-byte BLE boundary is mandatory to prevent buffer overflow
-      const CHUNK_SIZE = 20;
+      const CHUNK_SIZE = 20; // 20-byte BLE boundary prevents firmware dropouts
 
       for (let i = 0; i < dataArray.length; i += CHUNK_SIZE) {
         const chunk = dataArray.slice(i, i + CHUNK_SIZE);
         await characteristic.writeValueWithoutResponse(chunk);
-        await new Promise(resolve => setTimeout(resolve, 8)); // 8ms pacing delay
+        await new Promise(resolve => setTimeout(resolve, 8)); // 8ms pacing
       }
     }
 
-    function buildYHKLineByLinePayload() {
+    // Converts active MS Paint canvas directly into 1-bit ESC/POS raster binary stream
+    function buildCanvasPhotoPayload() {
       const width = canvas.width;   // 384 px
-      const height = canvas.height; // Full strip height
-      const widthBytes = Math.ceil(width / 8); // 48 bytes
+      const height = canvas.height; 
+      const widthBytes = Math.ceil(width / 8); // 48 bytes per line
       const imageData = ctx.getImageData(0, 0, width, height).data;
 
       const bitmap = new Uint8Array(widthBytes * height);
@@ -600,10 +604,10 @@
             const r = imageData[idx];
             const g = imageData[idx + 1];
             const b = imageData[idx + 2];
-            const gray = (0.299 * r + 0.587 * g + 0.114 * b);
+            const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
 
-            // FIX: Thermal element must turn ON for DARK pixels (gray < 128)
-            if (gray < 128) {
+            // Thermal elements burn black when pixel is DARK (< 128)
+            if (brightness < 128) {
               byteVal |= (0x80 >> bit);
             }
           }
@@ -611,7 +615,7 @@
         }
       }
 
-      // GS v 0 Single Block Raster Command
+      // Single Block ESC/POS Header: GS v 0 0 [48] [0] [heightL] [heightH]
       const header = new Uint8Array([
         0x1D, 0x76, 0x30, 0x00,
         widthBytes & 0xff, (widthBytes >> 8) & 0xff,
@@ -631,6 +635,6 @@
     }
 
     window.onload = init;
-</script>
+  </script>
 </body>
 </html>
