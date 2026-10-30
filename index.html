@@ -527,6 +527,10 @@
 
     // --- ACTUAL YHK PHOTO PRINTING DRIVER ---
     async function connectAndPrint() {
+      console.log(
+        "VERSION CHECK",
+        Date.now()
+      );
       try {
         logStatus("Scanning for YHK Printer...");
 
@@ -576,6 +580,9 @@ await sendDataInChunks(
   writeChar,
   payload
 );
+await new Promise(
+  r => setTimeout(r, 1000)
+);
 
         // 3. Feed Paper Motor
         logStatus("Feeding paper...");
@@ -591,12 +598,12 @@ await sendDataInChunks(
     }
 
     async function sendDataInChunks(characteristic, dataArray) {
-      const CHUNK_SIZE = 100; // 20-byte BLE boundary prevents firmware dropouts
+      const CHUNK_SIZE = 20; // 20-byte BLE boundary prevents firmware dropouts
 
       for (let i = 0; i < dataArray.length; i += CHUNK_SIZE) {
         const chunk = dataArray.slice(i, i + CHUNK_SIZE);
         await characteristic.writeValueWithoutResponse(chunk);
-        await new Promise(resolve => setTimeout(resolve, 8)); // 8ms pacing
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
     }
 
