@@ -660,9 +660,9 @@
 
             if (brightness < 128) {
 
-                blackPixels++;
+              blackPixels++;
 
-                byteVal |= (0x80 >> bit);
+              byteVal |= (1 << bit);
             }
           }
 
