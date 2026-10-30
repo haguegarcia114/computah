@@ -605,17 +605,23 @@
           cancelAnimationFrame(liveAnimationId);
       }
 
-      ctx.fillStyle = "red";
-      ctx.fillRect(0, 0, 200, 200);
+      ctx.fillStyle = "white";
+ctx.fillRect(
+  0,
+  0,
+  canvas.width,
+  canvas.height
+);
 
-      console.log(
-          ctx.getImageData(
-              50,
-              50,
-              1,
-              1
-          ).data
-      );
+ctx.fillStyle = "black";
+ctx.fillRect(
+  100,
+  100,
+  100,
+  100
+);
+
+canvas.height = 128;
     }
 
     async function sendDataInChunks(characteristic, dataArray) {
