@@ -574,9 +574,8 @@
 
         const rasterPayload = buildCanvasPhotoPayload();
         console.log(
-          "Payload:",
-          rasterPayload.length,
-          rasterPayload.slice(0, 40)
+          "Payload bytes:",
+          rasterPayload.length
         );
         await sendDataInChunks(writeChar, rasterPayload);
 
