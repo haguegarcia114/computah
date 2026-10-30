@@ -549,22 +549,22 @@
         const service = await server.getPrimaryService("49535343-fe7d-4ae5-8fa9-9fafd205e455");
         const writeChar = await service.getCharacteristic("49535343-8841-43f4-a8d4-ecbe34729bb3");
 
-        // 1. Initialize Hardware + High Heat Power Setting
+        // 1. Hardware Initialization & Thermal Max Heat Pulse
         logStatus("Waking print head...");
         const initCmd = new Uint8Array([
           0x1B, 0x40,             // ESC @ Reset hardware
-          0x1B, 0x37, 0x07, 0xFF, 0x02, // Set heating time parameters (Max heat duration)
-          0x1D, 0x49, 0xF0, 0xFF  // Set heating energy density to maximum
+          0x1B, 0x37, 0x07, 0xFF, 0x02, // Max heating duration
+          0x1D, 0x49, 0xF0, 0xFF  // Set high density
         ]);
         await writeChar.writeValueWithoutResponse(initCmd);
         await new Promise(r => setTimeout(r, 200));
 
-        // 2. Stream Canvas Bitmap Payload to YHK Motor
+        // 2. Stream Dithered Canvas Photo Line-by-Line
         logStatus("Printing photo strip...");
         const rasterPayload = buildCanvasPhotoPayload();
         await sendDataInChunks(writeChar, rasterPayload);
 
-        // 3. Feed Paper Stream
+        // 3. Feed Paper Motor
         logStatus("Feeding paper...");
         const feedCmd = new Uint8Array([0x1B, 0x64, 0x08, 0x0A, 0x0A]);
         await sendDataInChunks(writeChar, feedCmd);
@@ -588,28 +588,46 @@
     }
 
     // Converts active MS Paint canvas directly into 1-bit ESC/POS raster binary stream
+    // Formats each horizontal line with a direct GS v 0 header for YHK/WalkPrint boards
     function buildCanvasPhotoPayload() {
       const width = canvas.width;   // 384 px
-      const height = 100;           // 100 lines tall test strip
-      const widthBytes = Math.ceil(width / 8); // 48 bytes
-      const bitmap = new Uint8Array(widthBytes * height);
+      const height = canvas.height; 
+      const widthBytes = Math.ceil(width / 8); // 48 bytes per line
+      const imageData = ctx.getImageData(0, 0, width, height).data;
 
-      // Fill array entirely with 0xFF (All 8 bits ON per byte = Solid Black)
-      bitmap.fill(0xFF);
+      const resultBytes = [];
 
-      const header = new Uint8Array([
-        0x1D, 0x76, 0x30, 0x00,
-        widthBytes & 0xff, (widthBytes >> 8) & 0xff,
-        height & 0xff, (height >> 8) & 0xff
-      ]);
+      for (let y = 0; y < height; y++) {
+        // Line Header: GS v 0 0 [48 bytes wide] [1 line tall]
+        resultBytes.push(
+          0x1D, 0x76, 0x30, 0x00,
+          widthBytes & 0xFF, 0x00,
+          0x01, 0x00
+        );
 
-      const payload = new Uint8Array(header.length + bitmap.length);
-      payload.set(header, 0);
-      payload.set(bitmap, header.length);
+        for (let x = 0; x < width; x += 8) {
+          let byteVal = 0;
+          for (let bit = 0; bit < 8; bit++) {
+            const px = x + bit;
+            if (px >= width) continue;
 
-      return payload;
+            const idx = (y * width + px) * 4;
+            const r = imageData[idx];
+            const g = imageData[idx + 1];
+            const b = imageData[idx + 2];
+            const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+
+            // Thermal element turns ON (burns black dot) when pixel is dark
+            if (brightness < 128) {
+              byteVal |= (0x80 >> bit);
+            }
+          }
+          resultBytes.push(byteVal);
+        }
+      }
+
+      return new Uint8Array(resultBytes);
     }
-
     function logStatus(msg) {
       statusBox.innerText = "Status: " + msg;
       statusBox.scrollTop = statusBox.scrollHeight;
