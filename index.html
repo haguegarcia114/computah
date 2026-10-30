@@ -566,59 +566,151 @@
       new QRCode(qrBox, { text: dummyURL, width: 80, height: 80 });
     }
 
-    // --- WORKING YHK PHOTO STRIP DRIVER ---
     async function connectAndPrint() {
-      try {
+    try {
+
         logStatus("Scanning for YHK Printer...");
 
-        const SERVICE = "49535343-fe7d-4ae5-8fa9-9fafd205e455";
-        const TX = "49535343-8841-43f4-a8d4-ecbe34729bb3";
-        const RX = "49535343-1e4d-4bd9-ba61-23c647249616";
-
         const device = await navigator.bluetooth.requestDevice({
-          filters: [{ namePrefix: "YHK" }],
-          optionalServices: [SERVICE]
+        filters: [
+            { namePrefix: "YHK" },
+            { namePrefix: "Walk" },
+            { namePrefix: "MX" },
+            { namePrefix: "GB" }
+        ],
+        optionalServices: [
+            "49535343-fe7d-4ae5-8fa9-9fafd205e455"
+        ]
         });
 
         logStatus("Connecting...");
+
         const server = await device.gatt.connect();
-        const service = await server.getPrimaryService(SERVICE);
-        const writeChar = await service.getCharacteristic(TX);
 
-        try {
-          const rx = await service.getCharacteristic(RX);
-          await rx.startNotifications();
-        } catch (e) {}
+        await new Promise(
+        r => setTimeout(r, 500)
+        );
 
-        const raster = buildCanvasPhotoPayload();
-        const job = new Uint8Array(2 + raster.length + 3 + 3);
-        job.set([0x1B, 0x40], 0);
-        job.set(raster, 2);
-        job.set([0x1B, 0x64, 0x04], 2 + raster.length);
-        job.set([0x0A, 0x0A, 0x0A], 2 + raster.length + 3);
+        const allServices =
+        await server.getPrimaryServices();
 
-        logStatus("Printing...");
-        await sendDataInChunks(writeChar, job);
+        console.log("===== SERVICES =====");
 
-        logStatus("Print completed!");
-      } catch (err) {
-        console.error(err);
-        logStatus("Print Error: " + err.message);
-      }
-    }
+        for (const s of allServices) {
 
-    async function sendDataInChunks(characteristic, data) {
-      const CHUNK_SIZE = 182;
-      const DELAY_MS = 40;
-      const FLUSH_MS = 1500;
+        console.log(
+            "SERVICE:",
+            s.uuid
+        );
 
-      for (let i = 0; i < data.length; i += CHUNK_SIZE) {
-        await characteristic.writeValueWithoutResponse(data.slice(i, i + CHUNK_SIZE));
-        if (i + CHUNK_SIZE < data.length) {
-          await new Promise(r => setTimeout(r, DELAY_MS));
+        const chars =
+            await s.getCharacteristics();
+
+        for (const c of chars) {
+
+            console.log(
+            "CHAR:",
+            c.uuid,
+            {
+                write: c.properties.write,
+                writeWithoutResponse:
+                c.properties.writeWithoutResponse,
+                notify:
+                c.properties.notify
+            }
+            );
         }
-      }
-      await new Promise(r => setTimeout(r, FLUSH_MS));
+        }
+
+        const service =
+        await server.getPrimaryService(
+            "49535343-fe7d-4ae5-8fa9-9fafd205e455"
+        );
+
+        const writeChar =
+        await service.getCharacteristic(
+            "49535343-8841-43f4-a8d4-ecbe34729bb3"
+        );
+
+        console.log(
+        "USING:",
+        writeChar.uuid
+        );
+
+        logStatus(
+        "Sending printer test..."
+        );
+
+        await writeChar.writeValueWithoutResponse(
+        new Uint8Array([0x1B, 0x40])
+        );
+
+        await new Promise(r => setTimeout(r, 500));
+
+        logStatus("Generating image...");
+
+        const rasterPayload =
+        buildYHKLineByLinePayload();
+
+        console.log(
+        "Payload bytes:",
+        rasterPayload.length
+        );
+
+        await sendDataInChunks(
+        writeChar,
+        rasterPayload
+        );
+
+        await sendDataInChunks(
+        writeChar,
+        new Uint8Array([
+            0x1B,
+            0x64,
+            0x08
+        ])
+        );
+
+        logStatus("Print completed.");
+
+
+    } catch (err) {
+
+        console.error(err);
+
+        logStatus(
+        "Print Error: " +
+        err.message
+        );
+    }
+    }
+    async function sendDataInChunks(
+    characteristic,
+    dataArray
+    ) {
+
+    const CHUNK_SIZE = 180;
+
+    for (
+        let i = 0;
+        i < dataArray.length;
+        i += CHUNK_SIZE
+    ) {
+
+        const chunk =
+        dataArray.slice(
+            i,
+            i + CHUNK_SIZE
+        );
+
+        await characteristic.writeValueWithoutResponse(
+        chunk
+        );
+
+        await new Promise(
+        resolve => setTimeout(resolve, 20)
+        );
+    }
     }
 
     function buildCanvasPhotoPayload() {
