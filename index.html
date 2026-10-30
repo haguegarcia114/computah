@@ -604,9 +604,26 @@
         new Uint8Array([0x1B, 0x40])
         );
 
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 1000));
 
         logStatus("Generating image...");
+
+        
+        ctx.fillStyle = "white";
+        ctx.fillRect(
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
+
+        ctx.fillStyle = "black";
+        ctx.fillRect(
+          100,
+          100,
+          100,
+          100
+        );
 
         const rasterPayload =
         buildYHKLineByLinePayload();
@@ -648,7 +665,7 @@
     dataArray
     ) {
 
-    const CHUNK_SIZE = 180;
+    const CHUNK_SIZE = 100;
 
     for (
         let i = 0;
@@ -731,9 +748,8 @@
             const gray =
             (r + g + b) / 3;
 
-            if (gray < 128) {
-            byteVal |=
-                (0x80 >> bit);
+            if (gray > 128) {
+            byteVal |= (0x80 >> bit);
             }
         }
 
