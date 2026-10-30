@@ -559,33 +559,23 @@
         await new Promise(r => setTimeout(r, 200));
 
         // 2. Stream Dithered Canvas Photo Line-by-Line
-        logStatus("Printing photo strip...");
+        logStatus("Printing protocol test...");
 
-        ctx.fillStyle = "white";
-        ctx.fillRect(
-          0,
-          0,
-          canvas.width,
-          canvas.height
-        );
+const payload = new Uint8Array([
+  0x1D, 0x76, 0x30, 0x00,
+  0x04, 0x00,
+  0x20, 0x00,
 
-        ctx.fillStyle = "black";
-        ctx.fillRect(100,100,100,100);
+  // 32 rows of solid black
+  ...new Array(4 * 32).fill(0xFF)
+]);
 
-        const rasterPayload = buildCanvasPhotoPayload();
-      
-        console.log(
-          "Payload bytes:",
-          rasterPayload.length
-        );
+console.log("TEST PAYLOAD", payload);
 
-        console.log(
-          "First 32 bytes:",
-          Array.from(
-            rasterPayload.slice(0, 32)
-          )
-        );
-        await sendDataInChunks(writeChar, rasterPayload);
+await sendDataInChunks(
+  writeChar,
+  payload
+);
 
         // 3. Feed Paper Motor
         logStatus("Feeding paper...");
