@@ -579,15 +579,15 @@
         0x1B, 0x64, 0x08
       ]);
 
-console.log("TEST PAYLOAD", payload);
+      console.log("TEST PAYLOAD", payload);
 
-await sendDataInChunks(
-  writeChar,
-  payload
-);
-await new Promise(
-  r => setTimeout(r, 1000)
-);
+      await sendDataInChunks(
+        writeChar,
+        payload
+      );
+      await new Promise(
+        r => setTimeout(r, 1000)
+      );
 
         // 3. Feed Paper Motor
         logStatus("Feeding paper...");
@@ -600,6 +600,22 @@ await new Promise(
         console.error(err);
         logStatus("Print Error: " + err.message);
       }
+      
+      if (liveAnimationId) {
+          cancelAnimationFrame(liveAnimationId);
+      }
+
+      ctx.fillStyle = "red";
+      ctx.fillRect(0, 0, 200, 200);
+
+      console.log(
+          ctx.getImageData(
+              50,
+              50,
+              1,
+              1
+          ).data
+      );
     }
 
     async function sendDataInChunks(characteristic, dataArray) {
