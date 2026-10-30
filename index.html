@@ -586,36 +586,13 @@
     // Converts active MS Paint canvas directly into 1-bit ESC/POS raster binary stream
     function buildCanvasPhotoPayload() {
       const width = canvas.width;   // 384 px
-      const height = canvas.height; 
-      const widthBytes = Math.ceil(width / 8); // 48 bytes per line
-      const imageData = ctx.getImageData(0, 0, width, height).data;
-
+      const height = 100;           // 100 lines tall test strip
+      const widthBytes = Math.ceil(width / 8); // 48 bytes
       const bitmap = new Uint8Array(widthBytes * height);
-      let byteIndex = 0;
 
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x += 8) {
-          let byteVal = 0;
-          for (let bit = 0; bit < 8; bit++) {
-            const px = x + bit;
-            if (px >= width) continue;
+      // Fill array entirely with 0xFF (All 8 bits ON per byte = Solid Black)
+      bitmap.fill(0xFF);
 
-            const idx = (y * width + px) * 4;
-            const r = imageData[idx];
-            const g = imageData[idx + 1];
-            const b = imageData[idx + 2];
-            const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
-
-            // Thermal elements burn black when pixel is DARK (< 128)
-            if (brightness < 128) {
-              byteVal |= (0x80 >> bit);
-            }
-          }
-          bitmap[byteIndex++] = byteVal;
-        }
-      }
-
-      // Single Block ESC/POS Header: GS v 0 0 [48] [0] [heightL] [heightH]
       const header = new Uint8Array([
         0x1D, 0x76, 0x30, 0x00,
         widthBytes & 0xff, (widthBytes >> 8) & 0xff,
