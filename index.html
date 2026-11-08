@@ -257,6 +257,14 @@
       font-size: 14px;
     }
 
+    .btn-cam {
+      background: #4a4a4a;
+      color: white;
+      height: 42px;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
     .btn-start {
       background: #000080;
       color: white;
@@ -448,6 +456,7 @@
 
         <div class="panel-section">
           <div class="panel-title">2. Photobooth Session</div>
+          <button class="btn-cam" onclick="switchCamera()">📷 Switch Camera (Webcam / Canon)</button>
           <button class="btn-start" onclick="startCountdownSession()">📸 START BOOTH</button>
           <button style="margin-top: 6px;" onclick="resetPhotos()">🔄 Reset Canvas</button>
         </div>
@@ -541,6 +550,11 @@
     let isDitheringEnabled = true;
     let isSessionRunning = false;
 
+    // Camera Switcher state variables
+    let availableVideoDevices = [];
+    let currentCameraIndex = 0;
+    let currentMediaStream = null;
+
     const PRINT_HEADER_HEIGHT = 28;
     const FOOTER_HEIGHT = 90;
     const CANVAS_WIDTH = 384;
@@ -551,24 +565,68 @@
       changeLayout();
     }
 
-    async function setupWebcam() {
+    async function setupWebcam(targetDeviceId = null) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        // Stop any running camera stream before requesting a new one
+        if (currentMediaStream) {
+          currentMediaStream.getTracks().forEach(track => track.stop());
+        }
+
+        // Query available video devices
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        availableVideoDevices = allDevices.filter(device => device.kind === 'videoinput');
+
+        let constraints = {
+          video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
           audio: false
-        });
-        video.srcObject = stream;
+        };
+
+        if (targetDeviceId) {
+          constraints.video.deviceId = { exact: targetDeviceId };
+        } else if (availableVideoDevices.length > 0) {
+          // Check if Canon camera exists in device list on first load
+          const canonDeviceIndex = availableVideoDevices.findIndex(d => 
+            d.label.toLowerCase().includes('canon') || d.label.toLowerCase().includes('eos')
+          );
+          if (canonDeviceIndex !== -1) {
+            currentCameraIndex = canonDeviceIndex;
+            constraints.video.deviceId = { exact: availableVideoDevices[canonDeviceIndex].deviceId };
+          }
+        }
+
+        currentMediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = currentMediaStream;
+
         video.onloadedmetadata = async () => {
           try {
             await video.play();
-            logStatus("Webcam ready.");
+            const currentTrack = currentMediaStream.getVideoTracks()[0];
+            const activeLabel = currentTrack ? currentTrack.label : "Camera";
+            logStatus("Active Camera: " + activeLabel);
           } catch (e) {
-            logStatus("Play blocked: Click screen.");
+            logStatus("Play blocked: Click screen to enable stream.");
           }
         };
       } catch (err) {
         logStatus("Camera Error: " + err.name + " - " + err.message);
       }
+    }
+
+    async function switchCamera() {
+      if (availableVideoDevices.length === 0) {
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        availableVideoDevices = allDevices.filter(device => device.kind === 'videoinput');
+      }
+
+      if (availableVideoDevices.length <= 1) {
+        logStatus("Only 1 video input detected. Plug in your Canon EOS camera via USB.");
+        return;
+      }
+
+      currentCameraIndex = (currentCameraIndex + 1) % availableVideoDevices.length;
+      const nextDevice = availableVideoDevices[currentCameraIndex];
+      logStatus(`Switching to input [${currentCameraIndex + 1}/${availableVideoDevices.length}]: ${nextDevice.label || 'Camera'}`);
+      await setupWebcam(nextDevice.deviceId);
     }
 
     function openLayoutModal() {
