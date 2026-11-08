@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Ok-computah - Paint</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- MediaPipe Hands for Gesture Recognition -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
   <style>
     :root {
       --win-bg: #c0c0c0;
@@ -25,20 +30,18 @@
     }
 
     body {
-      /* Custom Windows 95 Background Wallpaper */
       background: url("https://i.pinimg.com/736x/5d/76/04/5d760470f001a7b1920468ac7d0287f0.jpg") center center / cover no-repeat fixed;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      width: 60vw;
       margin: auto;
+      width: 60vw;
       overflow: hidden;
       padding: 6px;
       position: relative;
     }
 
-    /* Windows Desktop Background Icons */
     .desktop-icons {
       position: absolute;
       top: 16px;
@@ -66,7 +69,6 @@
       margin-bottom: 2px;
     }
 
-    /* Main Window Shell */
     .window {
       background: var(--win-bg);
       border: 2px solid;
@@ -80,7 +82,6 @@
       box-shadow: 6px 6px 16px rgba(0,0,0,0.6);
     }
 
-    /* Title Bar */
     .title-bar {
       background: var(--navy);
       color: white;
@@ -107,7 +108,6 @@
       cursor: pointer;
     }
 
-    /* Menu Bar */
     .menu-bar {
       display: flex;
       gap: 16px;
@@ -116,7 +116,6 @@
       border-bottom: 1px solid var(--win-border-dark);
     }
 
-    /* Main Layout Area */
     .main-body {
       display: flex;
       flex: 1;
@@ -125,7 +124,6 @@
       overflow: hidden;
     }
 
-    /* Classic 2-Column Square Icon Tool Sidebar */
     .tools-sidebar {
       width: 64px;
       background: var(--win-bg);
@@ -148,17 +146,52 @@
       pointer-events: none;
     }
 
-    /* Center Canvas Viewport */
     .viewport {
       flex: 1;
       background: #808080;
       border: 2px inset var(--win-border-light);
       display: flex;
-      justify-content: center;
-      align-items: flex-start;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
       overflow: auto;
       padding: 10px;
       position: relative;
+    }
+
+    /* Win95 Retro Gesture Progress Bar */
+    .gesture-progress-box {
+      width: 384px;
+      background: #c0c0c0;
+      border: 2px inset var(--win-border-light);
+      padding: 4px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .gesture-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      font-weight: bold;
+    }
+
+    .gesture-bar-track {
+      width: 100%;
+      height: 14px;
+      background: white;
+      border: 1px inset var(--win-border-dark);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .gesture-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: #000080;
+      transition: width 0.1s linear;
     }
 
     canvas {
@@ -170,7 +203,6 @@
       image-rendering: pixelated;
     }
 
-    /* Big On-Screen Countdown Overlay */
     .timer-overlay {
       position: absolute;
       top: 50%;
@@ -185,57 +217,60 @@
       display: none;
     }
 
-    /* Hidden Camera & QR Elements */
     #hiddenVideo, #qrcode {
       display: none;
     }
 
-    /* Right Controls Panel */
     .control-panel {
-      width: 240px;
+      width: 250px;
       background: var(--win-bg);
       border: 1px solid var(--win-border-dark);
       padding: 8px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
+      overflow-y: auto;
     }
 
     .panel-section {
       border: 2px inset var(--win-border-light);
-      padding: 10px;
+      padding: 8px;
       background: #d4d4d4;
     }
 
     .panel-title {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: bold;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .checkbox-label {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: bold;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       cursor: pointer;
-      margin-top: 8px;
+      margin-top: 4px;
     }
 
     .checkbox-label input {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
     }
 
-    /* Larger Animated Win95 Bevel Buttons */
+    select, input[type="range"] {
+      width: 100%;
+      margin-top: 4px;
+    }
+
     button {
       background: var(--win-bg);
       border: 2px solid;
       border-color: var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
-      padding: 10px;
+      padding: 8px;
       font-weight: bold;
-      font-size: 13px;
+      font-size: 12px;
       cursor: pointer;
       width: 100%;
       transition: all 0.05s ease;
@@ -253,43 +288,42 @@
     }
 
     .btn-layout {
-      height: 46px;
+      height: 38px;
       background: #e1e1e1;
-      font-size: 14px;
+      font-size: 13px;
     }
 
     .btn-cam {
       background: #4a4a4a;
       color: white;
-      height: 42px;
-      font-size: 12px;
-      margin-bottom: 6px;
+      height: 36px;
+      font-size: 11px;
+      margin-bottom: 4px;
     }
 
     .btn-start {
       background: #000080;
       color: white;
-      height: 54px;
-      font-size: 15px;
+      height: 48px;
+      font-size: 14px;
     }
 
     .btn-print {
       background: #008000;
       color: white;
-      height: 54px;
-      font-size: 15px;
+      height: 48px;
+      font-size: 14px;
     }
 
     .status-text {
-      font-size: 11px;
+      font-size: 10px;
       background: white;
       border: 1px inset var(--win-border-dark);
       padding: 6px;
-      height: 60px;
+      height: 54px;
       overflow-y: auto;
     }
 
-    /* Significantly Enlarged Color Palette Bar */
     .color-bar {
       height: 52px;
       background: var(--win-bg);
@@ -321,7 +355,6 @@
       cursor: pointer;
     }
 
-    /* Modal Layout Picker Window */
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -386,7 +419,6 @@
 </head>
 <body>
 
-  <!-- Background Windows Desktop Icons -->
   <div class="desktop-icons">
     <div class="desktop-icon"><span>💻</span>My Computer</div>
     <div class="desktop-icon"><span>🗑️</span>Recycle Bin</div>
@@ -434,6 +466,17 @@
       </div>
 
       <div class="viewport">
+        <!-- 0-100% GESTURE PROGRESS BAR -->
+        <div class="gesture-progress-box">
+          <div class="gesture-label-row">
+            <span id="gestureNameText">Gesture Trigger: Idle</span>
+            <span id="gesturePercentText">0%</span>
+          </div>
+          <div class="gesture-bar-track">
+            <div class="gesture-bar-fill" id="gestureBarFill"></div>
+          </div>
+        </div>
+
         <div class="timer-overlay" id="timerOverlay">5</div>
         <canvas id="photoCanvas" width="384" height="760"></canvas>
       </div>
@@ -443,27 +486,59 @@
 
       <div class="control-panel">
         <div class="panel-section">
-          <div class="panel-title">1. Select Frame Layout</div>
+          <div class="panel-title">1. Layout & View</div>
           <button class="btn-layout" onclick="openLayoutModal()">🖼️ Choose Layout</button>
-
           <label class="checkbox-label">
             <input type="checkbox" id="toggleAnim" onchange="toggleAnimation(this)"> Freeze Preview
           </label>
+        </div>
 
+        <div class="panel-section">
+          <div class="panel-title">✨ Effects Tab</div>
           <label class="checkbox-label">
-            <input type="checkbox" id="toggleDither" checked onchange="toggleDithering(this)"> Pixel Dithering
+            <input type="checkbox" id="toggleEffects" checked onchange="toggleEffectsTab(this)"> Enable Visual Effect
           </label>
+
+          <div style="margin-top: 6px;">
+            <span style="font-size: 10px; font-weight: bold;">Dither / Filter Type:</span>
+            <select id="effectTypeSelect" onchange="updateEffectType()">
+              <option value="floyd" selected>Floyd-Steinberg (Classic)</option>
+              <option value="bayer">Bayer Matrix (Checkerboard)</option>
+              <option value="ascii">Pixel ASCII Mode</option>
+              <option value="outline">Outline Mode (ASCII Line-Art)</option>
+            </select>
+          </div>
+
+          <div style="margin-top: 6px;">
+            <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:bold;">
+              <span>Pixel Size / Boxiness:</span>
+              <span id="pixelSizeLabel">2px</span>
+            </div>
+            <input type="range" id="pixelSizeSlider" min="1" max="8" value="2" oninput="updatePixelSize(this.value)">
+          </div>
         </div>
 
         <div class="panel-section">
-          <div class="panel-title">2. Photobooth Session</div>
-          <button class="btn-cam" onclick="switchCamera()">📷 Switch Camera (Webcam / Canon)</button>
+          <div class="panel-title">✋ Hand Triggers</div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="toggleGestures" checked onchange="toggleGestures(this)"> Enable Gestures
+          </label>
+          <div style="font-size: 9px; margin-top: 4px; color: #333;">
+            • ✌️ Peace Sign (Hold 1s): Start Session<br>
+            • ✊ ➔ ✋ Fist to Open Palm: Change Filter<br>
+            • 👌 OK Sign (Hold 1s): Print Photo
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-title">3. Photobooth Session</div>
+          <button class="btn-cam" onclick="switchCamera()">📷 Switch Camera</button>
           <button class="btn-start" onclick="startCountdownSession()">📸 START BOOTH</button>
-          <button style="margin-top: 6px;" onclick="resetPhotos()">🔄 Reset Canvas</button>
+          <button style="margin-top: 4px;" onclick="resetPhotos()">🔄 Reset Canvas</button>
         </div>
 
         <div class="panel-section">
-          <div class="panel-title">3. Thermal Print</div>
+          <div class="panel-title">4. Thermal Print</div>
           <button class="btn-print" onclick="connectAndPrint()">🖨️ PRINT STRIP</button>
         </div>
 
@@ -471,7 +546,6 @@
       </div>
     </div>
 
-    <!-- Enlarged Color Palette Bar -->
     <div class="color-bar">
       <div class="active-color-box"></div>
       <div class="swatches">
@@ -495,7 +569,6 @@
     </div>
   </div>
 
-  <!-- Interactive Layout Selection Popup -->
   <div class="modal-overlay" id="layoutModal">
     <div class="modal-window">
       <div class="title-bar">
@@ -526,10 +599,10 @@
         </div>
         <div class="layout-card" onclick="selectLayout(4)">
           <div class="layout-preview-box" style="height:84px;">
-            <div class="preview-frame" style="height:12px;"></div>
-            <div class="preview-frame" style="height:12px;"></div>
-            <div class="preview-frame" style="height:12px;"></div>
-            <div class="preview-frame" style="height:12px;"></div>
+            <div class="preview-frame" style="height:10px;"></div>
+            <div class="preview-frame" style="height:10px;"></div>
+            <div class="preview-frame" style="height:10px;"></div>
+            <div class="preview-frame" style="height:10px;"></div>
           </div>
           <b>4 Photos</b>
         </div>
@@ -544,36 +617,223 @@
     const statusBox = document.getElementById('statusBox');
     const timerOverlay = document.getElementById('timerOverlay');
 
+    const gestureNameText = document.getElementById('gestureNameText');
+    const gesturePercentText = document.getElementById('gesturePercentText');
+    const gestureBarFill = document.getElementById('gestureBarFill');
+
     let totalPhotos = 3;
     let capturedImages = [];
     let liveAnimationId = null;
     let isAnimationOff = false;
-    let isDitheringEnabled = true;
     let isSessionRunning = false;
 
-    // Camera Switcher state variables
+    let isEffectsEnabled = true;
+    let currentEffectMode = 'floyd'; 
+    let pixelScaleSize = 2;          
+
     let availableVideoDevices = [];
     let currentCameraIndex = 0;
     let currentMediaStream = null;
+
+    // --- GESTURE ACCUMULATOR & PROGRESS TRACKER ---
+    let isGesturesEnabled = true;
+    let handsDetector = null;
+    let wasFistClosed = false;
+    let gestureCooldown = false;
+
+    let activeGestureType = null;
+    let gestureHoldStartTime = null;
+    const REQUIRED_HOLD_MS = 1000; // Require 1 full second of holding gesture (0-100%)
 
     const PRINT_HEADER_HEIGHT = 28;
     const FOOTER_HEIGHT = 90;
     const CANVAS_WIDTH = 384;
     const PHOTO_BOX_HEIGHT = 220;
 
+    const BAYER_MATRIX_4X4 = [
+      [ 0,  8,  2, 10],
+      [12,  4, 14,  6],
+      [ 3, 11,  1,  9],
+      [15,  7, 13,  5]
+    ];
+
+    const effectOptions = ['floyd', 'bayer', 'ascii', 'outline'];
+
     async function init() {
       await setupWebcam();
+      initGestureDetector();
       changeLayout();
+    }
+
+    // --- MEDIAPIPE HANDS GESTURE ENGINE ---
+    function initGestureDetector() {
+      handsDetector = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+
+      handsDetector.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.75,
+        minTrackingConfidence: 0.75
+      });
+
+      handsDetector.onResults(onHandResults);
+
+      async function processVideoFrame() {
+        if (isGesturesEnabled && video.readyState === 4 && !video.paused) {
+          await handsDetector.send({ image: video });
+        }
+        setTimeout(processVideoFrame, 100);
+      }
+      processVideoFrame();
+    }
+
+    function toggleGestures(checkbox) {
+      isGesturesEnabled = checkbox.checked;
+      resetGestureProgress("Disabled");
+      logStatus(`Hand Gestures ${isGesturesEnabled ? 'enabled' : 'disabled'}.`);
+    }
+
+    function resetGestureProgress(label = "Idle") {
+      activeGestureType = null;
+      gestureHoldStartTime = null;
+      gestureNameText.innerText = `Gesture Trigger: ${label}`;
+      gesturePercentText.innerText = "0%";
+      gestureBarFill.style.width = "0%";
+    }
+
+    function onHandResults(results) {
+      if (!isGesturesEnabled || gestureCooldown || isSessionRunning) {
+        resetGestureProgress(isSessionRunning ? "Session Running..." : "Idle");
+        return;
+      }
+
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const lm = results.multiHandLandmarks[0];
+
+        const isPeaceSign = detectPeaceSignStrict(lm);
+        const isOkSign = detectOkSign(lm);
+        const isFist = detectFistStrict(lm);
+        const isOpenPalm = detectOpenPalm(lm);
+
+        // 1. ✊ -> ✋ Closed Fist to Open Palm (Filter Switcher)
+        if (isFist) {
+          wasFistClosed = true;
+          resetGestureProgress("Fist Locked (✊ Open Palm to Switch)");
+          return;
+        } else if (wasFistClosed && isOpenPalm) {
+          wasFistClosed = false;
+          triggerGestureAction("✊➔✋ Palm Opened! Switching Filter...", () => {
+            cycleNextFilter();
+          });
+          return;
+        }
+
+        // 2. ✌️ Peace Sign (Hold to Start Photobooth Session)
+        if (isPeaceSign) {
+          updateGestureAccumulator("✌️ Peace Sign (Start Booth)", () => {
+            startCountdownSession();
+          });
+          return;
+        }
+
+        // 3. 👌 OK Sign (Hold to Print)
+        if (isOkSign) {
+          updateGestureAccumulator("👌 OK Sign (Print Strip)", () => {
+            connectAndPrint();
+          });
+          return;
+        }
+
+        wasFistClosed = false;
+        resetGestureProgress("Scanning...");
+      } else {
+        wasFistClosed = false;
+        resetGestureProgress("No Hand Detected");
+      }
+    }
+
+    function updateGestureAccumulator(gestureLabel, executeActionFn) {
+      const now = performance.now();
+
+      if (activeGestureType !== gestureLabel) {
+        activeGestureType = gestureLabel;
+        gestureHoldStartTime = now;
+      }
+
+      const elapsed = now - gestureHoldStartTime;
+      const progressPercent = Math.min(100, Math.floor((elapsed / REQUIRED_HOLD_MS) * 100));
+
+      gestureNameText.innerText = `Holding: ${gestureLabel}`;
+      gesturePercentText.innerText = `${progressPercent}%`;
+      gestureBarFill.style.width = `${progressPercent}%`;
+
+      if (progressPercent >= 100) {
+        triggerGestureAction(`${gestureLabel} Triggered!`, executeActionFn);
+      }
+    }
+
+    function triggerGestureAction(msg, actionFn) {
+      gestureCooldown = true;
+      resetGestureProgress("100% - EXECUTING");
+      logStatus(msg);
+      actionFn();
+      setTimeout(() => {
+        gestureCooldown = false;
+        resetGestureProgress("Ready");
+      }, 2000);
+    }
+
+    function cycleNextFilter() {
+      const currentIndex = effectOptions.indexOf(currentEffectMode);
+      const nextIndex = (currentIndex + 1) % effectOptions.length;
+      currentEffectMode = effectOptions[nextIndex];
+      document.getElementById('effectTypeSelect').value = currentEffectMode;
+      logStatus(`Filter Switched via Hand Gesture: ${currentEffectMode.toUpperCase()}`);
+      if (isAnimationOff) renderSingleFrame();
+    }
+
+    // --- STRICT GESTURE DEFINITIONS ---
+
+    // Strict ✌️ Peace / Victory Sign: Index (8) & Middle (12) extended UP; Ring (16) & Pinky (20) curled DOWN
+    function detectPeaceSignStrict(lm) {
+      const isIndexUp = lm[8].y < lm[6].y;
+      const isMiddleUp = lm[12].y < lm[10].y;
+      const isRingCurled = lm[16].y > lm[14].y;
+      const isPinkyCurled = lm[20].y > lm[18].y;
+
+      return isIndexUp && isMiddleUp && isRingCurled && isPinkyCurled;
+    }
+
+    // Strict ✊ Fist: ALL 4 main fingers curled down into palm
+    function detectFistStrict(lm) {
+      const isIndexCurled = lm[8].y > lm[6].y;
+      const isMiddleCurled = lm[12].y > lm[10].y;
+      const isRingCurled = lm[16].y > lm[14].y;
+      const isPinkyCurled = lm[20].y > lm[18].y;
+
+      return isIndexCurled && isMiddleCurled && isRingCurled && isPinkyCurled;
+    }
+
+    function detectOkSign(lm) {
+      const distThumbIndex = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y);
+      const isOpenMiddle = lm[12].y < lm[10].y;
+      const isOpenRing = lm[16].y < lm[14].y;
+      const isOpenPinky = lm[20].y < lm[18].y;
+      return (distThumbIndex < 0.05) && isOpenMiddle && isOpenRing && isOpenPinky;
+    }
+
+    function detectOpenPalm(lm) {
+      return (lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[20].y < lm[18].y && lm[4].y < lm[3].y);
     }
 
     async function setupWebcam(targetDeviceId = null) {
       try {
-        // Stop any running camera stream before requesting a new one
         if (currentMediaStream) {
           currentMediaStream.getTracks().forEach(track => track.stop());
         }
 
-        // Query available video devices
         const allDevices = await navigator.mediaDevices.enumerateDevices();
         availableVideoDevices = allDevices.filter(device => device.kind === 'videoinput');
 
@@ -585,7 +845,6 @@
         if (targetDeviceId) {
           constraints.video.deviceId = { exact: targetDeviceId };
         } else if (availableVideoDevices.length > 0) {
-          // Check if Canon camera exists in device list on first load
           const canonDeviceIndex = availableVideoDevices.findIndex(d => 
             d.label.toLowerCase().includes('canon') || d.label.toLowerCase().includes('eos')
           );
@@ -605,7 +864,7 @@
             const activeLabel = currentTrack ? currentTrack.label : "Camera";
             logStatus("Active Camera: " + activeLabel);
           } catch (e) {
-            logStatus("Play blocked: Click screen to enable stream.");
+            logStatus("Play blocked: Click screen.");
           }
         };
       } catch (err) {
@@ -626,8 +885,26 @@
 
       currentCameraIndex = (currentCameraIndex + 1) % availableVideoDevices.length;
       const nextDevice = availableVideoDevices[currentCameraIndex];
-      logStatus(`Switching to input [${currentCameraIndex + 1}/${availableVideoDevices.length}]: ${nextDevice.label || 'Camera'}`);
+      logStatus(`Switching input [${currentCameraIndex + 1}/${availableVideoDevices.length}]: ${nextDevice.label || 'Camera'}`);
       await setupWebcam(nextDevice.deviceId);
+    }
+
+    function toggleEffectsTab(checkbox) {
+      isEffectsEnabled = checkbox.checked;
+      if (isAnimationOff) renderSingleFrame();
+      logStatus(`Visual Effects ${isEffectsEnabled ? 'enabled' : 'disabled'}.`);
+    }
+
+    function updateEffectType() {
+      currentEffectMode = document.getElementById('effectTypeSelect').value;
+      if (isAnimationOff) renderSingleFrame();
+      logStatus(`Effect set to: ${currentEffectMode.toUpperCase()}`);
+    }
+
+    function updatePixelSize(val) {
+      pixelScaleSize = parseInt(val);
+      document.getElementById('pixelSizeLabel').innerText = pixelScaleSize + "px";
+      if (isAnimationOff) renderSingleFrame();
     }
 
     function openLayoutModal() {
@@ -656,12 +933,6 @@
       }
     }
 
-    function toggleDithering(checkbox) {
-      isDitheringEnabled = checkbox.checked;
-      if (isAnimationOff) renderSingleFrame();
-      logStatus(`Dithering ${isDitheringEnabled ? 'enabled' : 'disabled'}.`);
-    }
-
     function changeLayout() {
       capturedImages = [];
       canvas.height = PRINT_HEADER_HEIGHT + (totalPhotos * PHOTO_BOX_HEIGHT) + FOOTER_HEIGHT;
@@ -687,38 +958,202 @@
     }
 
     function applyDitheringToCtx(targetCtx, x, y, width, height) {
+      if (!isEffectsEnabled) return;
+
+      switch (currentEffectMode) {
+        case 'floyd':
+          applyFloydSteinberg(targetCtx, x, y, width, height, pixelScaleSize);
+          break;
+        case 'bayer':
+          applyBayerDither(targetCtx, x, y, width, height, pixelScaleSize);
+          break;
+        case 'ascii':
+          applyASCIIMode(targetCtx, x, y, width, height, pixelScaleSize);
+          break;
+        case 'outline':
+          applyASCIIOutlineMode(targetCtx, x, y, width, height, pixelScaleSize);
+          break;
+      }
+    }
+
+    function applyFloydSteinberg(targetCtx, x, y, width, height, scale) {
       const imgData = targetCtx.getImageData(x, y, width, height);
       const data = imgData.data;
       const w = imgData.width;
       const h = imgData.height;
 
-      for (let i = 0; i < data.length; i += 4) {
-        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-        data[i] = gray;
-        data[i + 1] = gray;
-        data[i + 2] = gray;
+      for (let currentY = 0; currentY < h; currentY += scale) {
+        for (let currentX = 0; currentX < w; currentX += scale) {
+          const idx = (currentY * w + currentX) * 4;
+          const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+          
+          for (let dy = 0; dy < scale && currentY + dy < h; dy++) {
+            for (let dx = 0; dx < scale && currentX + dx < w; dx++) {
+              const bIdx = ((currentY + dy) * w + (currentX + dx)) * 4;
+              data[bIdx] = gray;
+              data[bIdx + 1] = gray;
+              data[bIdx + 2] = gray;
+            }
+          }
+        }
       }
 
-      for (let currentY = 0; currentY < h; currentY++) {
-        for (let currentX = 0; currentX < w; currentX++) {
+      for (let currentY = 0; currentY < h; currentY += scale) {
+        for (let currentX = 0; currentX < w; currentX += scale) {
           const idx = (currentY * w + currentX) * 4;
           const oldPixel = data[idx];
           const newPixel = oldPixel < 128 ? 0 : 255;
-
-          data[idx] = newPixel;
-          data[idx + 1] = newPixel;
-          data[idx + 2] = newPixel;
-
           const err = oldPixel - newPixel;
 
-          if (currentX + 1 < w) data[idx + 4] += err * (7 / 16);
-          if (currentX - 1 >= 0 && currentY + 1 < h) data[idx + (w - 1) * 4] += err * (3 / 16);
-          if (currentY + 1 < h) data[idx + w * 4] += err * (5 / 16);
-          if (currentX + 1 < w && currentY + 1 < h) data[idx + (w + 1) * 4] += err * (1 / 16);
+          for (let dy = 0; dy < scale && currentY + dy < h; dy++) {
+            for (let dx = 0; dx < scale && currentX + dx < w; dx++) {
+              const bIdx = ((currentY + dy) * w + (currentX + dx)) * 4;
+              data[bIdx] = newPixel;
+              data[bIdx + 1] = newPixel;
+              data[bIdx + 2] = newPixel;
+            }
+          }
+
+          if (currentX + scale < w) {
+            const rIdx = (currentY * w + (currentX + scale)) * 4;
+            data[rIdx] = Math.min(255, Math.max(0, data[rIdx] + err * (7 / 16)));
+          }
+          if (currentY + scale < h) {
+            if (currentX - scale >= 0) {
+              const blIdx = ((currentY + scale) * w + (currentX - scale)) * 4;
+              data[blIdx] = Math.min(255, Math.max(0, data[blIdx] + err * (3 / 16)));
+            }
+            const bIdx = ((currentY + scale) * w + currentX) * 4;
+            data[bIdx] = Math.min(255, Math.max(0, data[bIdx] + err * (5 / 16)));
+
+            if (currentX + scale < w) {
+              const brIdx = ((currentY + scale) * w + (currentX + scale)) * 4;
+              data[brIdx] = Math.min(255, Math.max(0, data[brIdx] + err * (1 / 16)));
+            }
+          }
         }
       }
 
       targetCtx.putImageData(imgData, x, y);
+    }
+
+    function applyBayerDither(targetCtx, x, y, width, height, scale) {
+      const imgData = targetCtx.getImageData(x, y, width, height);
+      const data = imgData.data;
+      const w = imgData.width;
+      const h = imgData.height;
+
+      for (let currentY = 0; currentY < h; currentY += scale) {
+        for (let currentX = 0; currentX < w; currentX += scale) {
+          const idx = (currentY * w + currentX) * 4;
+          const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+
+          const mx = Math.floor(currentX / scale) % 4;
+          const my = Math.floor(currentY / scale) % 4;
+          const threshold = (BAYER_MATRIX_4X4[my][mx] / 16) * 255;
+
+          const newPixel = gray < threshold ? 0 : 255;
+
+          for (let dy = 0; dy < scale && currentY + dy < h; dy++) {
+            for (let dx = 0; dx < scale && currentX + dx < w; dx++) {
+              const bIdx = ((currentY + dy) * w + (currentX + dx)) * 4;
+              data[bIdx] = newPixel;
+              data[bIdx + 1] = newPixel;
+              data[bIdx + 2] = newPixel;
+            }
+          }
+        }
+      }
+      targetCtx.putImageData(imgData, x, y);
+    }
+
+    function applyASCIIMode(targetCtx, x, y, width, height, scale) {
+      const imgData = targetCtx.getImageData(x, y, width, height);
+      const data = imgData.data;
+      const w = imgData.width;
+      const h = imgData.height;
+
+      const asciiChars = ["@", "#", "S", "%", "?", "*", "+", ";", ":", ",", "."];
+      const charStep = Math.min(18, Math.max(6, scale * 3));
+
+      targetCtx.save();
+      targetCtx.beginPath();
+      targetCtx.rect(x, y, width, height);
+      targetCtx.clip();
+
+      targetCtx.fillStyle = "#FFFFFF";
+      targetCtx.fillRect(x, y, width, height);
+
+      targetCtx.fillStyle = "#000000";
+      targetCtx.font = `bold ${charStep}px monospace`;
+
+      for (let currentY = 0; currentY < h; currentY += charStep) {
+        for (let currentX = 0; currentX < w; currentX += charStep) {
+          const idx = (currentY * w + currentX) * 4;
+          const brightness = (0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2]) / 255;
+          const charIndex = Math.floor(brightness * (asciiChars.length - 1));
+          const char = asciiChars[charIndex];
+
+          targetCtx.fillText(char, x + currentX, y + currentY + charStep);
+        }
+      }
+      targetCtx.restore();
+    }
+
+    function applyASCIIOutlineMode(targetCtx, x, y, width, height, scale) {
+      const imgData = targetCtx.getImageData(x, y, width, height);
+      const data = imgData.data;
+      const w = imgData.width;
+      const h = imgData.height;
+
+      const charStep = Math.min(18, Math.max(6, scale * 3));
+      const grayscale = new Uint8Array(w * h);
+
+      for (let i = 0; i < data.length; i += 4) {
+        grayscale[i / 4] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      }
+
+      targetCtx.save();
+      targetCtx.beginPath();
+      targetCtx.rect(x, y, width, height);
+      targetCtx.clip();
+
+      targetCtx.fillStyle = "#FFFFFF";
+      targetCtx.fillRect(x, y, width, height);
+
+      targetCtx.fillStyle = "#000000";
+      targetCtx.font = `bold ${charStep}px monospace`;
+
+      for (let currentY = 1; currentY < h - 1; currentY += charStep) {
+        for (let currentX = 1; currentX < w - 1; currentX += charStep) {
+          const gx = 
+            -1 * grayscale[(currentY - 1) * w + (currentX - 1)] + 1 * grayscale[(currentY - 1) * w + (currentX + 1)] +
+            -2 * grayscale[currentY * w + (currentX - 1)]       + 2 * grayscale[currentY * w + (currentX + 1)] +
+            -1 * grayscale[(currentY + 1) * w + (currentX - 1)] + 1 * grayscale[(currentY + 1) * w + (currentX + 1)];
+
+          const gy = 
+            -1 * grayscale[(currentY - 1) * w + (currentX - 1)] - 2 * grayscale[(currentY - 1) * w + currentX] - 1 * grayscale[(currentY - 1) * w + (currentX + 1)] +
+             1 * grayscale[(currentY + 1) * w + (currentX - 1)] + 2 * grayscale[(currentY + 1) * w + currentX] + 1 * grayscale[(currentY + 1) * w + (currentX + 1)];
+
+          const magnitude = Math.sqrt(gx * gx + gy * gy);
+          
+          let edgeChar = "";
+          if (magnitude > 120) {
+            edgeChar = "#";
+          } else if (magnitude > 80) {
+            edgeChar = "@";
+          } else if (magnitude > 50) {
+            edgeChar = ":";
+          } else if (magnitude > 30) {
+            edgeChar = ".";
+          }
+
+          if (edgeChar !== "") {
+            targetCtx.fillText(edgeChar, x + currentX, y + currentY + charStep);
+          }
+        }
+      }
+      targetCtx.restore();
     }
 
     function renderPrintHeader() {
@@ -764,14 +1199,21 @@
           ctx.drawImage(capturedImages[i], 12, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
         } else if (i === currentSlot && video.readyState === 4) {
           ctx.save();
-          ctx.translate(CANVAS_WIDTH - 12, 0);
-          ctx.scale(-1, 1);
-          ctx.drawImage(video, 0, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
+          
+          const activeTrack = currentMediaStream ? currentMediaStream.getVideoTracks()[0] : null;
+          const isCanon = activeTrack && activeTrack.label.toLowerCase().includes('canon');
+
+          if (!isCanon) {
+            ctx.translate(CANVAS_WIDTH - 12, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
+          } else {
+            ctx.drawImage(video, 12, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
+          }
+          
           ctx.restore();
 
-          if (isDitheringEnabled) {
-            applyDitheringToCtx(ctx, 12, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
-          }
+          applyDitheringToCtx(ctx, 12, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
         } else {
           ctx.fillStyle = '#F0F0F0';
           ctx.fillRect(12, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
@@ -849,13 +1291,16 @@
       tempCanvas.height = PHOTO_BOX_HEIGHT - 20;
       const tempCtx = tempCanvas.getContext('2d');
 
-      tempCtx.translate(tempCanvas.width, 0);
-      tempCtx.scale(-1, 1);
-      tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+      const activeTrack = currentMediaStream ? currentMediaStream.getVideoTracks()[0] : null;
+      const isCanon = activeTrack && activeTrack.label.toLowerCase().includes('canon');
 
-      if (isDitheringEnabled) {
-        applyDitheringToCtx(tempCtx, 0, 0, tempCanvas.width, tempCanvas.height);
+      if (!isCanon) {
+        tempCtx.translate(tempCanvas.width, 0);
+        tempCtx.scale(-1, 1);
       }
+
+      tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+      applyDitheringToCtx(tempCtx, 0, 0, tempCanvas.width, tempCanvas.height);
 
       const img = new Image();
       img.src = tempCanvas.toDataURL('image/png');
@@ -872,7 +1317,6 @@
       new QRCode(qrBox, { text: dummyURL, width: 72, height: 72 });
     }
 
-    // --- WORKING YHK BLE DRIVER ENGINE ---
     async function connectAndPrint() {
       try {
         logStatus("Scanning for YHK Printer...");
