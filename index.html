@@ -30,11 +30,7 @@
     }
 
     body {
-<<<<<<< HEAD
       background-color: var(--teal);
-=======
-      background: url("https://i.pinimg.com/736x/5d/76/04/5d760470f001a7b1920468ac7d0287f0.jpg") center center / cover no-repeat fixed;
->>>>>>> restore-1
       display: flex;
       justify-content: center;
       align-items: center;
@@ -46,24 +42,14 @@
       position: relative;
     }
 
-<<<<<<< HEAD
     /* Windows Desktop Background Icons */
-    .desktop-icons {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-=======
     .desktop-icons {
       position: absolute;
       top: 16px;
       left: 16px;
       display: flex;
       flex-direction: column;
-      gap: 24px;
->>>>>>> restore-1
+      gap: 20px;
       z-index: 0;
     }
 
@@ -71,27 +57,15 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-<<<<<<< HEAD
       width: 64px;
       color: white;
       font-size: 11px;
       text-shadow: 1px 1px 1px black;
-=======
-      width: 72px;
-      color: white;
-      font-size: 12px;
-      font-weight: bold;
-      text-shadow: 1px 1px 2px black;
->>>>>>> restore-1
       cursor: pointer;
     }
 
     .desktop-icon span {
-<<<<<<< HEAD
       font-size: 24px;
-=======
-      font-size: 28px;
->>>>>>> restore-1
       margin-bottom: 2px;
     }
 
@@ -105,21 +79,13 @@
       flex-direction: column;
       padding: 2px;
       z-index: 1;
-<<<<<<< HEAD
       box-shadow: 4px 4px 10px rgba(0,0,0,0.5);
-=======
-      box-shadow: 6px 6px 16px rgba(0,0,0,0.6);
->>>>>>> restore-1
     }
 
     .title-bar {
       background: var(--navy);
       color: white;
-<<<<<<< HEAD
       padding: 3px 5px;
-=======
-      padding: 4px 6px;
->>>>>>> restore-1
       font-weight: bold;
       font-size: 14px;
       display: flex;
@@ -129,13 +95,8 @@
 
     .title-controls span {
       display: inline-block;
-<<<<<<< HEAD
       width: 16px;
       height: 14px;
-=======
-      width: 18px;
-      height: 16px;
->>>>>>> restore-1
       background: var(--win-bg);
       color: black;
       text-align: center;
@@ -181,11 +142,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
-<<<<<<< HEAD
       font-size: 12px;
-=======
-      font-size: 14px;
->>>>>>> restore-1
       pointer-events: none;
     }
 
@@ -240,6 +197,41 @@
 >>>>>>> restore-1
     }
 
+    /* Win95 Retro Gesture Progress Bar */
+    .gesture-progress-box {
+      width: 384px;
+      background: #c0c0c0;
+      border: 2px inset var(--win-border-light);
+      padding: 4px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .gesture-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      font-weight: bold;
+    }
+
+    .gesture-bar-track {
+      width: 100%;
+      height: 14px;
+      background: white;
+      border: 1px inset var(--win-border-dark);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .gesture-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: #000080;
+      transition: width 0.1s linear;
+    }
+
     canvas {
       background: #ffffff;
       border: 1px solid #000;
@@ -249,10 +241,7 @@
       image-rendering: pixelated;
     }
 
-<<<<<<< HEAD
     /* Big On-Screen Countdown Overlay */
-=======
->>>>>>> restore-1
     .timer-overlay {
       position: absolute;
       top: 50%;
@@ -267,20 +256,13 @@
       display: none;
     }
 
-<<<<<<< HEAD
     /* Hidden Camera & QR Elements */
-=======
->>>>>>> restore-1
     #hiddenVideo, #qrcode {
       display: none;
     }
 
     .control-panel {
-<<<<<<< HEAD
       width: 220px;
-=======
-      width: 250px;
->>>>>>> restore-1
       background: var(--win-bg);
       border: 1px solid var(--win-border-dark);
       padding: 8px;
@@ -334,10 +316,19 @@
       align-items: center;
       gap: 6px;
       cursor: pointer;
-      margin-top: 6px;
+      margin-top: 4px;
     }
 
-    /* Animated Win95 Bevel Buttons */
+    .checkbox-label input {
+      width: 14px;
+      height: 14px;
+    }
+
+    select, input[type="range"] {
+      width: 100%;
+      margin-top: 4px;
+    }
+
     button {
       background: var(--win-bg);
       border: 2px solid;
@@ -348,11 +339,7 @@
       cursor: pointer;
       width: 100%;
       transition: all 0.05s ease;
-<<<<<<< HEAD
       box-shadow: 1px 1px 0px #000;
-=======
-      box-shadow: 2px 2px 0px #000;
->>>>>>> restore-1
     }
 
     button:hover {
@@ -361,31 +348,13 @@
 
     button:active {
       border-color: var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark);
-<<<<<<< HEAD
       transform: translate(1px, 1px);
-=======
-      transform: translate(2px, 2px);
->>>>>>> restore-1
       box-shadow: none;
     }
 
     .btn-layout {
-<<<<<<< HEAD
       height: 40px;
       background: #e1e1e1;
-=======
-      height: 38px;
-      background: #e1e1e1;
-      font-size: 13px;
-    }
-
-    .btn-cam {
-      background: #4a4a4a;
-      color: white;
-      height: 36px;
-      font-size: 11px;
-      margin-bottom: 4px;
->>>>>>> restore-1
     }
 
     .btn-start {
@@ -407,27 +376,16 @@
       background: white;
       border: 1px inset var(--win-border-dark);
       padding: 6px;
-<<<<<<< HEAD
       height: 60px;
       overflow-y: auto;
     }
 
-    /* Expanded Color Palette Bar */
     .color-bar {
       height: 40px;
-=======
-      height: 54px;
-      overflow-y: auto;
-    }
-
-    .color-bar {
-      height: 52px;
->>>>>>> restore-1
       background: var(--win-bg);
       border-top: 1px solid var(--win-border-dark);
       display: flex;
       align-items: center;
-<<<<<<< HEAD
       padding: 3px;
       gap: 4px;
     }
@@ -435,36 +393,13 @@
     .active-color-box {
       width: 32px;
       height: 32px;
-=======
-      padding: 4px;
-      gap: 6px;
-    }
-
-    .active-color-box {
-      width: 42px;
-      height: 42px;
->>>>>>> restore-1
       border: 2px inset var(--win-border-light);
       background: #000;
     }
 
     .swatches {
       display: grid;
-<<<<<<< HEAD
       grid-template-rows: repeat(2, 14px);
-      grid-auto-flow: column;
-      gap: 2px;
-    }
-
-    .swatch {
-      width: 16px;
-      height: 14px;
-      border: 1px solid #808080;
-    }
-
-    /* Modal Layout Picker Window */
-=======
-      grid-template-rows: repeat(2, 20px);
       grid-auto-flow: column;
       gap: 3px;
     }
@@ -476,7 +411,7 @@
       cursor: pointer;
     }
 
->>>>>>> restore-1
+    /* Modal Layout Picker Window */
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -495,11 +430,7 @@
       background: var(--win-bg);
       border: 2px solid;
       border-color: var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
-<<<<<<< HEAD
       width: 340px;
-=======
-      width: 360px;
->>>>>>> restore-1
       padding: 2px;
       box-shadow: 4px 4px 12px rgba(0,0,0,0.6);
     }
@@ -514,19 +445,11 @@
     .layout-card {
       background: #d4d4d4;
       border: 2px inset var(--win-border-light);
-<<<<<<< HEAD
       padding: 8px;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 6px;
-=======
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
->>>>>>> restore-1
       cursor: pointer;
     }
 
@@ -535,11 +458,7 @@
     }
 
     .layout-preview-box {
-<<<<<<< HEAD
       width: 48px;
-=======
-      width: 52px;
->>>>>>> restore-1
       background: white;
       border: 1px solid black;
       display: flex;
@@ -549,11 +468,7 @@
     }
 
     .preview-frame {
-<<<<<<< HEAD
       height: 12px;
-=======
-      height: 14px;
->>>>>>> restore-1
       background: #c0c0c0;
       border: 1px solid #808080;
     }
@@ -561,10 +476,7 @@
 </head>
 <body>
 
-<<<<<<< HEAD
   <!-- Background Windows Desktop Icons -->
-=======
->>>>>>> restore-1
   <div class="desktop-icons">
     <div class="desktop-icon"><span>💻</span>My Computer</div>
     <div class="desktop-icon"><span>🗑️</span>Recycle Bin</div>
@@ -612,20 +524,6 @@
       </div>
 
       <div class="viewport">
-<<<<<<< HEAD
-=======
-        <!-- 0-100% GESTURE PROGRESS BAR -->
-        <div class="gesture-progress-box">
-          <div class="gesture-label-row">
-            <span id="gestureNameText">Gesture Trigger: Idle</span>
-            <span id="gesturePercentText">0%</span>
-          </div>
-          <div class="gesture-bar-track">
-            <div class="gesture-bar-fill" id="gestureBarFill"></div>
-          </div>
-        </div>
-
->>>>>>> restore-1
         <div class="timer-overlay" id="timerOverlay">5</div>
         <canvas id="photoCanvas" width="384" height="760"></canvas>
       </div>
@@ -635,29 +533,7 @@
 
       <div class="control-panel">
         <div class="panel-section">
-<<<<<<< HEAD
           <div class="panel-title">1. Select Frame Layout</div>
-          <button class="btn-layout" onclick="openLayoutModal()">🖼️ Choose Layout</button>
-
-          <label class="checkbox-label">
-            <input type="checkbox" id="toggleAnim" onchange="toggleAnimation(this)"> Freeze Preview
-          </label>
-
-          <label class="checkbox-label">
-            <input type="checkbox" id="toggleDither" checked onchange="toggleDithering(this)"> Pixel Dithering
-          </label>
-        </div>
-
-        <div class="panel-section">
-          <div class="panel-title">2. Photobooth Session</div>
-          <button class="btn-start" onclick="startCountdownSession()">📸 START BOOTH</button>
-          <button style="margin-top: 6px;" onclick="resetPhotos()">🔄 Reset Canvas</button>
-        </div>
-
-        <div class="panel-section">
-          <div class="panel-title">3. Thermal Print</div>
-=======
-          <div class="panel-title">1. Layout & View</div>
           <button class="btn-layout" onclick="openLayoutModal()">🖼️ Choose Layout</button>
           <label class="checkbox-label">
             <input type="checkbox" id="toggleAnim" onchange="toggleAnimation(this)"> Freeze Preview
@@ -709,8 +585,7 @@
         </div>
 
         <div class="panel-section">
-          <div class="panel-title">4. Thermal Print</div>
->>>>>>> restore-1
+          <div class="panel-title">3. Thermal Print</div>
           <button class="btn-print" onclick="connectAndPrint()">🖨️ PRINT STRIP</button>
         </div>
 
@@ -718,10 +593,7 @@
       </div>
     </div>
 
-<<<<<<< HEAD
     <!-- Expanded Color Palette Bar -->
-=======
->>>>>>> restore-1
     <div class="color-bar">
       <div class="active-color-box"></div>
       <div class="swatches">
@@ -745,10 +617,7 @@
     </div>
   </div>
 
-<<<<<<< HEAD
   <!-- Interactive Layout Selection Popup -->
-=======
->>>>>>> restore-1
   <div class="modal-overlay" id="layoutModal">
     <div class="modal-window">
       <div class="title-bar">
@@ -757,33 +626,20 @@
       </div>
       <div class="modal-grid">
         <div class="layout-card" onclick="selectLayout(1)">
-<<<<<<< HEAD
           <div class="layout-preview-box" style="height:32px;">
             <div class="preview-frame" style="height:26px;"></div>
-=======
-          <div class="layout-preview-box" style="height:36px;">
-            <div class="preview-frame" style="height:30px;"></div>
->>>>>>> restore-1
           </div>
           <b>1 Photo</b>
         </div>
         <div class="layout-card" onclick="selectLayout(2)">
-<<<<<<< HEAD
           <div class="layout-preview-box" style="height:48px;">
-=======
-          <div class="layout-preview-box" style="height:52px;">
->>>>>>> restore-1
             <div class="preview-frame"></div>
             <div class="preview-frame"></div>
           </div>
           <b>2 Photos</b>
         </div>
         <div class="layout-card" onclick="selectLayout(3)">
-<<<<<<< HEAD
           <div class="layout-preview-box" style="height:64px;">
-=======
-          <div class="layout-preview-box" style="height:68px;">
->>>>>>> restore-1
             <div class="preview-frame"></div>
             <div class="preview-frame"></div>
             <div class="preview-frame"></div>
@@ -791,11 +647,7 @@
           <b>3 Photos</b>
         </div>
         <div class="layout-card" onclick="selectLayout(4)">
-<<<<<<< HEAD
           <div class="layout-preview-box" style="height:78px;">
-=======
-          <div class="layout-preview-box" style="height:84px;">
->>>>>>> restore-1
             <div class="preview-frame" style="height:10px;"></div>
             <div class="preview-frame" style="height:10px;"></div>
             <div class="preview-frame" style="height:10px;"></div>
@@ -813,21 +665,31 @@
     const video = document.getElementById('hiddenVideo');
     const statusBox = document.getElementById('statusBox');
     const timerOverlay = document.getElementById('timerOverlay');
-<<<<<<< HEAD
-=======
-
-    const gestureNameText = document.getElementById('gestureNameText');
-    const gesturePercentText = document.getElementById('gesturePercentText');
-    const gestureBarFill = document.getElementById('gestureBarFill');
->>>>>>> restore-1
 
     let totalPhotos = 3;
     let capturedImages = [];
     let liveAnimationId = null;
     let isAnimationOff = false;
-<<<<<<< HEAD
     let isDitheringEnabled = true;
     let isSessionRunning = false;
+
+    let isEffectsEnabled = true;
+    let currentEffectMode = 'floyd'; 
+    let pixelScaleSize = 2;          
+
+    let availableVideoDevices = [];
+    let currentCameraIndex = 0;
+    let currentMediaStream = null;
+
+    // --- GESTURE ACCUMULATOR & PROGRESS TRACKER ---
+    let isGesturesEnabled = true;
+    let handsDetector = null;
+    let wasFistClosed = false;
+    let gestureCooldown = false;
+
+    let activeGestureType = null;
+    let gestureHoldStartTime = null;
+    const REQUIRED_HOLD_MS = 1000; // Require 1 full second of holding gesture (0-100%)
 
 =======
     let isSessionRunning = false;
@@ -855,15 +717,6 @@
     const FOOTER_HEIGHT = 90;
     const CANVAS_WIDTH = 384;
     const PHOTO_BOX_HEIGHT = 220; // Taller photo canvases
-
-    const BAYER_MATRIX_4X4 = [
-      [ 0,  8,  2, 10],
-      [12,  4, 14,  6],
-      [ 3, 11,  1,  9],
-      [15,  7, 13,  5]
-    ];
-
-    const effectOptions = ['floyd', 'bayer', 'ascii', 'outline'];
 
     async function init() {
       await setupWebcam();
@@ -1078,6 +931,41 @@
       }
     }
 
+    async function switchCamera() {
+      if (availableVideoDevices.length === 0) {
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        availableVideoDevices = allDevices.filter(device => device.kind === 'videoinput');
+      }
+
+      if (availableVideoDevices.length <= 1) {
+        logStatus("Only 1 video input detected. Plug in your Canon EOS camera via USB.");
+        return;
+      }
+
+      currentCameraIndex = (currentCameraIndex + 1) % availableVideoDevices.length;
+      const nextDevice = availableVideoDevices[currentCameraIndex];
+      logStatus(`Switching input [${currentCameraIndex + 1}/${availableVideoDevices.length}]: ${nextDevice.label || 'Camera'}`);
+      await setupWebcam(nextDevice.deviceId);
+    }
+
+    function toggleEffectsTab(checkbox) {
+      isEffectsEnabled = checkbox.checked;
+      if (isAnimationOff) renderSingleFrame();
+      logStatus(`Visual Effects ${isEffectsEnabled ? 'enabled' : 'disabled'}.`);
+    }
+
+    function updateEffectType() {
+      currentEffectMode = document.getElementById('effectTypeSelect').value;
+      if (isAnimationOff) renderSingleFrame();
+      logStatus(`Effect set to: ${currentEffectMode.toUpperCase()}`);
+    }
+
+    function updatePixelSize(val) {
+      pixelScaleSize = parseInt(val);
+      document.getElementById('pixelSizeLabel').innerText = pixelScaleSize + "px";
+      if (isAnimationOff) renderSingleFrame();
+    }
+
 <<<<<<< HEAD
 =======
     async function switchCamera() {
@@ -1142,7 +1030,6 @@
       }
     }
 
-<<<<<<< HEAD
     function toggleDithering(checkbox) {
       isDitheringEnabled = checkbox.checked;
       if (isAnimationOff) renderSingleFrame();
@@ -1255,10 +1142,6 @@
       targetCtx.putImageData(imgData, x, y);
     }
 
-<<<<<<< HEAD
-    function renderPrintHeader() {
-      // Printed MS Paint Title Header
-=======
     function applyBayerDither(targetCtx, x, y, width, height, scale) {
       const imgData = targetCtx.getImageData(x, y, width, height);
       const data = imgData.data;
@@ -1378,8 +1261,9 @@
       targetCtx.restore();
     }
 
+<<<<<<< HEAD
     function renderPrintHeader() {
->>>>>>> restore-1
+      // Printed MS Paint Title Header
       ctx.fillStyle = '#000080';
       ctx.fillRect(0, 0, CANVAS_WIDTH, PRINT_HEADER_HEIGHT);
 
@@ -1387,10 +1271,7 @@
       ctx.font = 'bold 12px "Courier New"';
       ctx.fillText('Ok-computah - Paint', 8, 18);
 
-<<<<<<< HEAD
       // Mini Window Action Buttons (_ □ X)
-=======
->>>>>>> restore-1
       const btnY = 5;
       const drawBtn = (x, text) => {
         ctx.fillStyle = '#C0C0C0';
@@ -1426,7 +1307,6 @@
           ctx.drawImage(capturedImages[i], 12, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
         } else if (i === currentSlot && video.readyState === 4) {
           ctx.save();
-<<<<<<< HEAD
           ctx.translate(CANVAS_WIDTH - 12, 0);
           ctx.scale(-1, 1);
           ctx.drawImage(video, 0, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
@@ -1435,23 +1315,6 @@
           if (isDitheringEnabled) {
             applyDitheringToCtx(ctx, 12, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
           }
-=======
-          
-          const activeTrack = currentMediaStream ? currentMediaStream.getVideoTracks()[0] : null;
-          const isCanon = activeTrack && activeTrack.label.toLowerCase().includes('canon');
-
-          if (!isCanon) {
-            ctx.translate(CANVAS_WIDTH - 12, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(video, 0, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
-          } else {
-            ctx.drawImage(video, 12, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
-          }
-          
-          ctx.restore();
-
-          applyDitheringToCtx(ctx, 12, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
->>>>>>> restore-1
         } else {
           ctx.fillStyle = '#F0F0F0';
           ctx.fillRect(12, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
@@ -1496,10 +1359,7 @@
       }
     }
 
-<<<<<<< HEAD
     // 5-Second Animated Photobooth Countdown Session
-=======
->>>>>>> restore-1
     async function startCountdownSession() {
       if (isSessionRunning) return;
       isSessionRunning = true;
@@ -1533,22 +1393,13 @@
       tempCanvas.height = PHOTO_BOX_HEIGHT - 20;
       const tempCtx = tempCanvas.getContext('2d');
 
-      const activeTrack = currentMediaStream ? currentMediaStream.getVideoTracks()[0] : null;
-      const isCanon = activeTrack && activeTrack.label.toLowerCase().includes('canon');
+      tempCtx.translate(tempCanvas.width, 0);
+      tempCtx.scale(-1, 1);
+      tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
 
-<<<<<<< HEAD
       if (isDitheringEnabled) {
         applyDitheringToCtx(tempCtx, 0, 0, tempCanvas.width, tempCanvas.height);
       }
-=======
-      if (!isCanon) {
-        tempCtx.translate(tempCanvas.width, 0);
-        tempCtx.scale(-1, 1);
-      }
-
-      tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
-      applyDitheringToCtx(tempCtx, 0, 0, tempCanvas.width, tempCanvas.height);
->>>>>>> restore-1
 
       const img = new Image();
       img.src = tempCanvas.toDataURL('image/png');
@@ -1565,10 +1416,7 @@
       new QRCode(qrBox, { text: dummyURL, width: 72, height: 72 });
     }
 
-<<<<<<< HEAD
     // --- WORKING YHK BLE DRIVER ENGINE ---
-=======
->>>>>>> restore-1
     async function connectAndPrint() {
       try {
         logStatus("Scanning for YHK Printer...");
@@ -1625,11 +1473,7 @@
 
     function buildCanvasPhotoPayload() {
       let blackPixels = 0;
-<<<<<<< HEAD
       const width = canvas.width;   // 384 px
-=======
-      const width = canvas.width;
->>>>>>> restore-1
       const height = canvas.height; 
       const widthBytes = Math.ceil(width / 8);
 
