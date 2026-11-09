@@ -34,9 +34,9 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      width: 60vw;
-      margin: auto;
+      height: 80vh;
+      width: 100vw;
+      margin-top: 20%;
       overflow: hidden;
       padding: 6px;
       position: relative;
@@ -456,7 +456,7 @@
 
     <div class="main-body">
       <div class="tools-sidebar">
-        <div class="tool-box">✂️</div>
+        <div class="tool-box" onclick="switchCamera()">📷</div>
         <div class="tool-box">✂️</div>
         <div class="tool-box">🧹</div>
         <div class="tool-box">🪣</div>
@@ -472,6 +472,7 @@
         <div class="tool-box">⬡</div>
         <div class="tool-box">◯</div>
         <div class="tool-box">▢</div>
+        
       </div>
 
       <div class="viewport" id="viewportContainer">
@@ -497,9 +498,11 @@
         <div class="panel-section">
           <div class="panel-title">1. Layout & View</div>
           <button class="btn-layout" onclick="openLayoutModal()">🖼️ Choose Layout</button>
-          <label class="checkbox-label">
+          <!--          <label class="checkbox-label">
             <input type="checkbox" id="toggleAnim" onchange="toggleAnimation(this)"> Freeze Preview
           </label>
+          -->
+
         </div>
 
         <div class="panel-section">
@@ -524,7 +527,7 @@
               <span id="pixelSizeLabel">2px</span>
             </div>
             <input type="range" id="pixelSizeSlider" min="1" max="8" value="2" oninput="updatePixelSize(this.value)">
-            <div style="font-size: 8px; color: #555; margin-top: 2px;">💡 Pinch zoom in/out on viewport to adjust</div>
+            
           </div>
         </div>
 
@@ -542,7 +545,7 @@
 
         <div class="panel-section">
           <div class="panel-title">3. Photobooth Session</div>
-          <button class="btn-cam" onclick="switchCamera()">📷 Switch Camera</button>
+
           <button class="btn-start" onclick="startCountdownSession()">📸 START BOOTH</button>
           <button style="margin-top: 4px;" onclick="resetPhotos()">🔄 Reset Canvas</button>
         </div>
@@ -1295,10 +1298,14 @@
 
       ctx.fillStyle = '#000000';
       ctx.font = 'bold 18px "Courier New"';
-      ctx.fillText('Ok Computah', 16, footerY + 32);
+      ctx.fillText('@0kcomputah', 16, footerY + 32);
 
       ctx.font = '12px "Courier New"';
-      ctx.fillText('@0kcomputah', 16, footerY + 52);
+      ctx.fillText('Photobooth Concepts', 16, footerY + 52);
+
+      ctx.font = '12px "Courier New"';
+      ctx.fillText('11/09/26', 16, footerY + 72);
+      
 
       const qrImg = document.querySelector('#qrcode img');
       if (qrImg && qrImg.src) {
