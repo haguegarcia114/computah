@@ -456,7 +456,7 @@
 
     <div class="main-body">
       <div class="tools-sidebar">
-        <button class="tool-box" onclick="switchCamera()">📷</button>
+        <button onclick="switchCamera()">📷</button>
         <div class="tool-box">✂️</div>
         <div class="tool-box">🧹</div>
         <div class="tool-box">🪣</div>
@@ -539,7 +539,6 @@
           <div style="font-size: 9px; margin-top: 4px; color: #333;">
             • ✌️ Peace Sign (Hold 1s): Start Session<br>
             • ✊ ➔ ✋ Fist to Open Palm: Change Filter<br>
-            • 👌 OK Sign (Hold 1s): Print Photo
           </div>
         </div>
 
@@ -1298,10 +1297,10 @@
 
       ctx.fillStyle = '#000000';
       ctx.font = 'bold 18px "Courier New"';
-      ctx.fillText('@0kcomputah', 16, footerY + 32);
+      ctx.fillText('TechEverywhere', 16, footerY + 32);
 
       ctx.font = '12px "Courier New"';
-      ctx.fillText('Photobooth Concepts', 16, footerY + 52);
+      ctx.fillText('For InnovAItion', 16, footerY + 52);
 
       ctx.font = '12px "Courier New"';
       ctx.fillText('11/09/26', 16, footerY + 72);
@@ -1380,7 +1379,7 @@
     function generateQRCode() {
       const qrBox = document.getElementById('qrcode');
       qrBox.innerHTML = '';
-      const targetURL = "https://www.instagram.com/0kcomputah/";
+      const targetURL = "https://www.instagram.com/gdgloyola/";
       new QRCode(qrBox, { text: targetURL, width: 72, height: 72 });
     }
 
