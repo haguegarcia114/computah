@@ -1253,13 +1253,7 @@
           const activeTrack = currentMediaStream ? currentMediaStream.getVideoTracks()[0] : null;
           const isCanon = activeTrack && activeTrack.label.toLowerCase().includes('canon');
 
-          if (!isCanon) {
-            ctx.translate(CANVAS_WIDTH - 12, 0);
-            ctx.scale(1, 1);
-            ctx.drawImage(video, 0, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
-          } else {
-            ctx.drawImage(video, 12, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
-          }
+          ctx.drawImage(video, 12, yPos + 10, CANVAS_WIDTH - 24, PHOTO_BOX_HEIGHT - 20);
           
           ctx.restore();
 
@@ -1359,11 +1353,7 @@
       const activeTrack = currentMediaStream ? currentMediaStream.getVideoTracks()[0] : null;
       const isCanon = activeTrack && activeTrack.label.toLowerCase().includes('canon');
 
-      if (!isCanon) {
-        tempCtx.translate(tempCanvas.width, 0);
-        tempCtx.scale(1, 1);
-      }
-
+      
       tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
       applyDitheringToCtx(tempCtx, 0, 0, tempCanvas.width, tempCanvas.height);
 
